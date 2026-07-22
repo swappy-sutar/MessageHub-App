@@ -7,6 +7,7 @@ import SignupPage from "./pages/SingupPage";
 import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
+import NotFoundPage from "./pages/NotFoundPage";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 import { useCallStore } from "./store/useCallStore";
@@ -65,6 +66,12 @@ function App() {
           <Route
             path="/profile"
             element={authUser ? <ProfilePage /> : <Navigate to="/login" />}
+          />
+
+          {/* Catch-all 404 Not Found Page */}
+          <Route
+            path="*"
+            element={<NotFoundPage />}
           />
         </Routes>
       </main>

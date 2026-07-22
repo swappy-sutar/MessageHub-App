@@ -2,25 +2,62 @@ import express from "express";
 import fileUpload from "express-fileupload";
 import { cloudinaryConnect } from "./Config/cloudinary.config.js";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { errorHandler } from "./Middlewares/error.middleware.js";
 
 const app = express();
+
+// 1. Helmet Security Middleware
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: false, // Disabled for flexible cross-origin media & WebSockets
+  })
+);
+
+// 2. Rate Limiting Middleware
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  max: 300, // Max 300 requests per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests from this IP address, please try again after 15 minutes.",
+  },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  max: 20, // Max 20 auth attempts per 15 minutes to prevent brute-force attacks
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many authentication attempts from this IP, please try again after 15 minutes.",
+  },
+});
+
+// Apply global rate limiting to all requests
+app.use(globalLimiter);
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://messagehub-i52c.onrender.com",
+  "https://chat-app-by-er-swappy.vercel.app",
+  "https://realtime-chat-application-mern-phi.vercel.app",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
 // CORS Options
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or same-origin)
     if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
       callback(null, true);
     } else {
-      callback(null, true); // Permissive CORS fallback for custom domains
+      callback(null, true);
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -55,7 +92,8 @@ app.get("/", (req, res) => {
   });
 });
 
-app.use("/api/v1/auth", authRoutes);
+// Apply strict rate limiting to auth routes
+app.use("/api/v1/auth", authLimiter, authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/friends", friendRoutes);

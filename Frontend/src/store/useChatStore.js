@@ -9,17 +9,35 @@ import { pushNotifications } from "../utils/pushNotifications";
 
 const secretKey = import.meta.env.VITE_API_ENCRYPTION_KEY;
 
+const LEGACY_KEYS = [
+  secretKey,
+  "messagehub_secret_encryption_key_2026",
+  "secretKey",
+];
+
 const decryptMessageText = (ciphertext) => {
   if (!ciphertext) return "";
-  if (!secretKey) return ciphertext;
+  if (typeof ciphertext !== "string") return ciphertext;
 
-  try {
-    const bytes = CryptoJS.AES.decrypt(ciphertext, secretKey);
-    const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-    return decryptedText || ciphertext;
-  } catch (error) {
+  // If text is not AES-encrypted (does not start with U2FsdGVkX1), return plain text directly
+  if (!ciphertext.startsWith("U2FsdGVkX1")) {
     return ciphertext;
   }
+
+  for (const key of LEGACY_KEYS) {
+    if (!key) continue;
+    try {
+      const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+      const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+      if (decryptedText) {
+        return decryptedText;
+      }
+    } catch (error) {
+      // try next fallback key
+    }
+  }
+
+  return ciphertext;
 };
 
 export const useChatStore = create((set, get) => ({

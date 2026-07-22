@@ -5,6 +5,29 @@ import { validateImageFile, cleanupTempFile } from "../Utils/fileValidation.js";
 import { getReceiverSocketID, io } from "../Config/socket.js";
 import CryptoJS from "crypto-js";
 
+const LEGACY_KEYS = [
+  process.env.ENCRYPTION_KEY,
+  "a9d8f7e6c5b4a39281706f5e4d3c2b1a0987654321fedcba0987654321abcdef",
+  "messagehub_secret_encryption_key_2026",
+  "secretKey",
+];
+
+const decryptTextHelper = (ciphertext) => {
+  if (!ciphertext) return "";
+  if (typeof ciphertext !== "string") return ciphertext;
+  if (!ciphertext.startsWith("U2FsdGVkX1")) return ciphertext;
+
+  for (const key of LEGACY_KEYS) {
+    if (!key) continue;
+    try {
+      const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+      const dec = bytes.toString(CryptoJS.enc.Utf8);
+      if (dec) return dec;
+    } catch (e) {}
+  }
+  return ciphertext;
+};
+
 const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
@@ -36,8 +59,6 @@ const getUsersForSidebar = async (req, res) => {
       _id: { $in: Array.from(chatUserIds) },
     }).select("-password");
 
-    const secretKey = process.env.ENCRYPTION_KEY;
-
     const usersWithLastMessage = await Promise.all(
       users.map(async (u) => {
         const userObj = u.toObject();
@@ -57,16 +78,7 @@ const getUsersForSidebar = async (req, res) => {
           if (lastMsg.deletedForEveryone) {
             lastMessageText = "🚫 This message was deleted";
           } else if (lastMsg.text) {
-            try {
-              if (secretKey) {
-                const bytes = CryptoJS.AES.decrypt(lastMsg.text, secretKey);
-                lastMessageText = bytes.toString(CryptoJS.enc.Utf8) || lastMsg.text;
-              } else {
-                lastMessageText = lastMsg.text;
-              }
-            } catch (e) {
-              lastMessageText = lastMsg.text;
-            }
+            lastMessageText = decryptTextHelper(lastMsg.text);
           } else if (lastMsg.image) {
             lastMessageText = "📷 Photo";
           }

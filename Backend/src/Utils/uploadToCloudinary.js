@@ -1,9 +1,10 @@
 import { v2 as cloudinary } from "cloudinary";
+import { cleanupTempFile } from "./fileValidation.js";
 
 const ImageUploadCloudinary = async (file, folder, height, quality) => {
   const options = {
     folder,
-    resource_type: "auto",
+    resource_type: "image", // Force non-executable image resource type
   };
 
   if (height) {
@@ -16,7 +17,11 @@ const ImageUploadCloudinary = async (file, folder, height, quality) => {
   try {
     return await cloudinary.uploader.upload(file.tempFilePath, options);
   } catch (error) {
-    throw new Error(`Failed to upload image to Cloudinary: ${error.message}`);
+    console.error("Cloudinary upload error:", error.stack || error);
+    throw new Error("Failed to upload media file. Please try again.");
+  } finally {
+    // Automatically delete temp file from server disk
+    await cleanupTempFile(file);
   }
 };
 

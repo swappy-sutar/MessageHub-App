@@ -1,27 +1,87 @@
-import React from 'react'
+import React, { useState } from 'react';
 import Sidebar from '../Components/Sidebar';
 import { useChatStore } from '../store/useChatStore';
 import ChatContainer from '../Components/ChatContainer';
 import NoChatSelected from '../Components/NoChatSelected';
+import BottomNav from '../Components/BottomNav';
+import CallHistoryView from '../Components/CallHistoryView';
+import UpdatesView from '../Components/UpdatesView';
+import ContactInfoPanel from '../Components/ContactInfoPanel';
+import InChatSearchPanel from '../Components/InChatSearchPanel';
 
 function HomePage() {
-  const { selectedUser } = useChatStore();
+  const {
+    selectedUser,
+    isContactInfoOpen,
+    setContactInfoOpen,
+    isSearchOpen,
+    setSearchOpen,
+  } = useChatStore();
+
+  const [activeTab, setActiveTab] = useState('chats');
 
   return (
-    <div className="h-[100%] bg-base-200">
-      
-      <div className="flex flex-col items-center justify-center pt-10 pb-5 px-5">
+    <div className="h-screen w-full bg-base-100 pt-14 pb-16 lg:pb-0 transition-colors duration-300 overflow-hidden flex flex-col">
+      <div className="flex-1 flex w-full h-full overflow-hidden">
+        {/* Desktop View & Mobile Chats View */}
+        {activeTab === 'chats' && (
+          <>
+            {/* Sidebar Contact List */}
+            <div
+              className={`w-full lg:w-80 h-full flex-shrink-0 border-r border-base-300 ${
+                selectedUser ? "hidden lg:block" : "block"
+              }`}
+            >
+              <Sidebar />
+            </div>
 
-        <div className="bg-base-100 shadow-xl w-full max-w-8xl h-[calc(100vh-6rem)] ">
-          <div className="flex h-full rounded-lg overflow-hidden">
-            <Sidebar />    
+            {/* Main Chat Container + Right Contact Info / Search Side Panels */}
+            <div
+              className={`flex-1 h-full min-w-0 flex ${
+                !selectedUser ? "hidden lg:flex" : "flex"
+              }`}
+            >
+              <div className="flex-1 h-full min-w-0 flex flex-col">
+                {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
+              </div>
 
-            {!selectedUser ? <NoChatSelected /> : <ChatContainer />}
+              {/* WhatsApp Web Style Right Contact Info Side Drawer */}
+              {selectedUser && isContactInfoOpen && (
+                <ContactInfoPanel
+                  contact={selectedUser}
+                  onClose={() => setContactInfoOpen(false)}
+                />
+              )}
+
+              {/* WhatsApp Web Style Right In-Chat Search Side Drawer */}
+              {selectedUser && isSearchOpen && (
+                <InChatSearchPanel
+                  onClose={() => setSearchOpen(false)}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Mobile Calls Tab View */}
+        {activeTab === 'calls' && (
+          <div className="w-full h-full">
+            <CallHistoryView />
           </div>
-        </div>
+        )}
+
+        {/* Mobile Updates Tab View */}
+        {activeTab === 'updates' && (
+          <div className="w-full h-full">
+            <UpdatesView />
+          </div>
+        )}
       </div>
+
+      {/* Mobile Bottom Navigation Bar ("Chats", "Calls", "Updates") */}
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 }
 
-export default HomePage
+export default HomePage;

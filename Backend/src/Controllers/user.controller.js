@@ -13,10 +13,10 @@ const getUsersForSidebar = async (req, res) => {
       users: filteredUsers,
     });
   } catch (error) {
-    console.error("Error fetching users for sidebar:", error);
+    console.error("Error fetching users for sidebar:", error.stack || error);
     return res.status(500).json({
       success: false,
-      message: `Internal server error: ${error.message}`,
+      message: "Failed to fetch users. Please try again.",
     });
   }
 };

@@ -1,12 +1,19 @@
-import {create} from 'zustand'; 
+import { create } from "zustand";
 
+const initialTheme = localStorage.getItem("chat-theme") || "coffee";
+if (typeof document !== "undefined") {
+  document.documentElement.setAttribute("data-theme", initialTheme);
+}
 
 export const useThemeStore = create((set) => ({
-  theme: localStorage.getItem('chat-theme') || 'coffee', // Default theme
+  theme: initialTheme,
   setTheme: (theme) => {
-    localStorage.setItem('chat-theme', theme);
-    set({theme});
-  }
+    localStorage.setItem("chat-theme", theme);
+    if (typeof document !== "undefined") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+    set({ theme });
+  },
 }));
 
-export { useThemeStore as default};
+export default useThemeStore;

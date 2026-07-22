@@ -31,12 +31,12 @@ const auth = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error(`Error in authenticate user: ${error.message}`);
+    console.error("Error in authenticate user:", error.stack || error);
     return res.status(401).json({
       success: false,
-      message: `Internal server error: ${error.message}`,
+      message: "Unauthorized: Invalid or expired token. Please log in again.",
     });
   }
 };
 
-export { auth };
+export { auth, auth as isAuthenticated };

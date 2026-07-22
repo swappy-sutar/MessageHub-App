@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./Components/Navbar";
+import CallModal from "./Components/CallModal";
 import HomePage from "./pages/HomePage";
 import SignupPage from "./pages/SingupPage";
 import LoginPage from "./pages/LoginPage";
@@ -8,15 +9,27 @@ import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
+import { useCallStore } from "./store/useCallStore";
+import { useChatStore } from "./store/useChatStore";
 import { Loader } from "lucide-react";
 
 function App() {
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
   const { theme } = useThemeStore();
+  const initCallListeners = useCallStore((state) => state.initCallListeners);
+  const subscribeToMessages = useChatStore((state) => state.subscribeToMessages);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Bind WebRTC call signaling & global message listeners as soon as socket is ready
+  useEffect(() => {
+    if (socket) {
+      initCallListeners();
+      subscribeToMessages();
+    }
+  }, [socket, initCallListeners, subscribeToMessages]);
 
   if (isCheckingAuth) {
     return (
@@ -30,7 +43,7 @@ function App() {
     <div data-theme={theme} className="min-h-screen w-full bg-base-100">
       <Navbar />
 
-      <main className="pt-6 ">
+      <main>
         <Routes>
           <Route
             path="/"
@@ -44,9 +57,10 @@ function App() {
             path="/login"
             element={!authUser ? <LoginPage /> : <Navigate to="/" />}
           />
+          {/* Settings page accessible for both logged in and logged out users */}
           <Route
             path="/settings"
-            element={authUser ? <SettingsPage /> : <Navigate to="/login" />}
+            element={<SettingsPage />}
           />
           <Route
             path="/profile"
@@ -54,6 +68,9 @@ function App() {
           />
         </Routes>
       </main>
+
+      {/* Global WebRTC Call Modal Overlay */}
+      <CallModal />
     </div>
   );
 }

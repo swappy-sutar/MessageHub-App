@@ -1,6 +1,7 @@
 import { Message } from "../Models/message.model.js";
 import { User } from "../Models/user.model.js";
 import { ImageUploadCloudinary } from "../Utils/uploadToCloudinary.js";
+import { validateImageFile, cleanupTempFile } from "../Utils/fileValidation.js";
 import { getReceiverSocketID, io } from "../Config/socket.js";
 import CryptoJS from "crypto-js";
 
@@ -14,27 +15,81 @@ const getUsersForSidebar = async (req, res) => {
       });
     }
 
-    const filteredUsers = await User.find({
-      _id: { $ne: loggedInUserId },
+    const currentUser = await User.findById(loggedInUserId).select("friends");
+    const friendIds = currentUser?.friends || [];
+
+    const messageUsers = await Message.find({
+      $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
+      deletedFor: { $ne: loggedInUserId },
+    }).select("senderId receiverId");
+
+    const chatUserIds = new Set([
+      ...friendIds.map((id) => id.toString()),
+      ...messageUsers.map((m) =>
+        m.senderId.toString() === loggedInUserId.toString()
+          ? m.receiverId.toString()
+          : m.senderId.toString()
+      ),
+    ]);
+
+    const users = await User.find({
+      _id: { $in: Array.from(chatUserIds) },
     }).select("-password");
 
-    if (filteredUsers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No contacts found",
-      });
-    }
+    const secretKey = process.env.ENCRYPTION_KEY;
+
+    const usersWithLastMessage = await Promise.all(
+      users.map(async (u) => {
+        const userObj = u.toObject();
+
+        const lastMsg = await Message.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: u._id },
+            { senderId: u._id, receiverId: loggedInUserId },
+          ],
+          deletedFor: { $ne: loggedInUserId },
+        }).sort({ createdAt: -1 });
+
+        let lastMessageText = "";
+        let lastMessageTime = null;
+
+        if (lastMsg) {
+          if (lastMsg.deletedForEveryone) {
+            lastMessageText = "🚫 This message was deleted";
+          } else if (lastMsg.text) {
+            try {
+              if (secretKey) {
+                const bytes = CryptoJS.AES.decrypt(lastMsg.text, secretKey);
+                lastMessageText = bytes.toString(CryptoJS.enc.Utf8) || lastMsg.text;
+              } else {
+                lastMessageText = lastMsg.text;
+              }
+            } catch (e) {
+              lastMessageText = lastMsg.text;
+            }
+          } else if (lastMsg.image) {
+            lastMessageText = "📷 Photo";
+          }
+          lastMessageTime = lastMsg.createdAt;
+        }
+
+        userObj.lastMessageText = lastMessageText;
+        userObj.lastMessageTime = lastMessageTime;
+
+        return userObj;
+      })
+    );
 
     return res.status(200).json({
       success: true,
       message: "Contacts fetched successfully",
-      data: filteredUsers,
+      data: usersWithLastMessage,
     });
   } catch (error) {
-    console.error("Error in getUsersForSidebar: ", error.message);
+    console.error("Error in getUsersForSidebar:", error.stack || error);
     return res.status(500).json({
       success: false,
-      message: `Internal server error: ${error.message}`,
+      message: "Failed to load contacts. Please try again.",
     });
   }
 };
@@ -44,36 +99,60 @@ const getMessages = async (req, res) => {
     const { id: userToChatId } = req.params;
     const senderId = req.user._id;
 
+    // Mark all incoming messages from this user as read & delivered
+    await Message.updateMany(
+      { senderId: userToChatId, receiverId: senderId, isRead: false },
+      { $set: { isRead: true, isDelivered: true } }
+    );
+
+    const otherUserSocketId = getReceiverSocketID(userToChatId);
+    if (otherUserSocketId) {
+      io.to(otherUserSocketId).emit("messagesRead", { byUserId: senderId });
+    }
+
     const messages = await Message.find({
       $or: [
         { senderId: senderId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: senderId },
       ],
+      deletedFor: { $ne: senderId },
     });
 
     return res.status(200).json({
       success: true,
-      messages: "all messages retrived successfully",
+      messages: "All messages retrieved successfully",
       data: messages,
     });
   } catch (error) {
-    console.error(`Error in getting messages: ${error.message}`);
+    console.error("Error in getMessages:", error.stack || error);
     return res.status(500).json({
       success: false,
-      message: `Internal server error: ${error.message}`,
+      message: "Failed to load messages. Please try again.",
     });
   }
 };
 
 const sendMessages = async (req, res) => {
+  let image = null;
   try {
     const text = req.body?.text;
-    const image = req.files?.image;
+    const isForwarded = req.body?.isForwarded === "true" || req.body?.isForwarded === true;
+    
+    let replyTo = null;
+    if (req.body?.replyTo) {
+      try {
+        replyTo = typeof req.body.replyTo === "string" ? JSON.parse(req.body.replyTo) : req.body.replyTo;
+      } catch (e) {
+        replyTo = null;
+      }
+    }
+
+    image = req.files?.image;
 
     if (!text && !image) {
       return res.status(400).json({
         success: false,
-        message: "Please provide at least text or image to send",
+        message: "Please provide text or image to send",
       });
     }
 
@@ -82,6 +161,15 @@ const sendMessages = async (req, res) => {
 
     let imageUrl;
     if (image && Object.keys(image).length !== 0) {
+      const validation = validateImageFile(image, { maxSizeMB: 10 });
+      if (!validation.valid) {
+        await cleanupTempFile(image);
+        return res.status(400).json({
+          success: false,
+          message: validation.message,
+        });
+      }
+
       const uploadResponse = await ImageUploadCloudinary(
         image,
         process.env.CLOUDINARY_FOLDER_NAME,
@@ -93,23 +181,25 @@ const sendMessages = async (req, res) => {
 
     let ciphertext = null;
     if (text) {
-      if (!process.env.ENCRYPTION_KEY) {
-        throw new Error("Encryption key is not set in environment variables");
-      }
-      ciphertext = CryptoJS.AES.encrypt(
-        text,
-        process.env.ENCRYPTION_KEY
-      ).toString();
+      const secretKey = process.env.ENCRYPTION_KEY;
+      ciphertext = secretKey
+        ? CryptoJS.AES.encrypt(text, secretKey).toString()
+        : text;
     }
+
+    const receiverSocketId = getReceiverSocketID(receiverId);
+    const isDelivered = !!receiverSocketId;
 
     const newMessage = await Message.create({
       senderId: senderId,
       receiverId: receiverId,
       text: ciphertext,
       image: imageUrl,
+      isDelivered: isDelivered,
+      isRead: false,
+      isForwarded: isForwarded,
+      replyTo: replyTo,
     });
-
-    const receiverSocketId = getReceiverSocketID(newMessage.receiverId);
 
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
@@ -121,12 +211,69 @@ const sendMessages = async (req, res) => {
       data: newMessage,
     });
   } catch (error) {
-    console.error(`Error in sending message: ${error.message}`);
+    if (image) await cleanupTempFile(image);
+    console.error("Error in sendMessages:", error.stack || error);
     return res.status(500).json({
       success: false,
-      message: `Internal server error: ${error.message}`,
+      message: "Failed to send message. Please try again.",
     });
   }
 };
 
-export { getUsersForSidebar, getMessages, sendMessages };
+// Delete Message Controller (Delete for Everyone or Delete for Me)
+const deleteMessage = async (req, res) => {
+  try {
+    const { id: messageId } = req.params;
+    const { deleteType } = req.body; // "everyone" or "me"
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ success: false, message: "Message not found" });
+    }
+
+    if (deleteType === "everyone") {
+      if (message.senderId.toString() !== userId.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only delete messages you sent for everyone",
+        });
+      }
+
+      message.deletedForEveryone = true;
+      message.text = "";
+      message.image = "";
+      await message.save();
+
+      const receiverSocketId = getReceiverSocketID(message.receiverId);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("messageDeletedForEveryone", { messageId });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Message deleted for everyone",
+        data: message,
+      });
+    } else {
+      // Delete for Me
+      await Message.findByIdAndUpdate(messageId, {
+        $addToSet: { deletedFor: userId },
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Message deleted for you",
+        data: { _id: messageId },
+      });
+    }
+  } catch (error) {
+    console.error("Error in deleteMessage:", error.stack || error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete message. Please try again.",
+    });
+  }
+};
+
+export { getUsersForSidebar, getMessages, sendMessages, deleteMessage };

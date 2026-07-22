@@ -27,8 +27,35 @@ const UserSchema = new Schema(
     },
     profilePic: {
       type: String,
-      default: ""
+      default: "",
     },
+    googleId: {
+      type: String,
+      sparse: true,
+    },
+    inviteCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    friends: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    sentInvites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    receivedInvites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   { timestamps: true }
 );

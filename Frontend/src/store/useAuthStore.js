@@ -3,9 +3,12 @@ import { axiosInstance } from "../utils/axios.js";
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
 import { io } from "socket.io-client";
+import { useCallStore } from "./useCallStore.js";
+import { useChatStore } from "./useChatStore.js";
+import { pushNotifications } from "../utils/pushNotifications.js";
 
 const BASE_URL =
-  import.meta.env.VITE_API_BACKEND_URL || "http://localhost:3000/";
+  import.meta.env.VITE_API_BACKEND_URL || "http://localhost:3000";
 
 const useAuthStore = create((set, get) => ({
   authUser: null,
@@ -29,16 +32,10 @@ const useAuthStore = create((set, get) => ({
       });
 
       set({ authUser: response.data });
-
-      if (response.data) {
-        toast.success("Authenticated successfully!");
-      } else {
-        toast.error("Not authenticated.");
-      }
       get().connectSocket();
+      pushNotifications.requestPermission();
     } catch (error) {
       console.error("Error checking CheckAuth:", error);
-
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });
@@ -52,10 +49,11 @@ const useAuthStore = create((set, get) => ({
       set({ authUser: response.data });
       toast.success("Account created successfully!");
       get().connectSocket();
+      pushNotifications.requestPermission();
     } catch (error) {
       console.error("Error signing up:", error);
       toast.error(
-        error.response.data.message || "Error signing up. Please try again."
+        error.response?.data?.message || "Error signing up. Please try again."
       );
     } finally {
       set({ isSigningUp: false });
@@ -76,10 +74,37 @@ const useAuthStore = create((set, get) => ({
       toast.success("Logged in successfully!", { id: loadingToastId });
 
       get().connectSocket();
+      pushNotifications.requestPermission();
     } catch (error) {
       console.error("Error logging in:", error);
       toast.error(
         error.response?.data?.message || "Error logging in. Please try again.",
+        { id: loadingToastId }
+      );
+    } finally {
+      set({ isLoggingIn: false });
+    }
+  },
+
+  googleLogin: async (googleData) => {
+    set({ isLoggingIn: true });
+    const loadingToastId = toast.loading("Connecting Google OAuth...");
+
+    try {
+      const response = await axiosInstance.post("/auth/google", googleData);
+      set({ authUser: response.data });
+
+      if (response.data.token) {
+        Cookies.set("token", response.data.token, { expires: 2, secure: true });
+      }
+
+      toast.success("Signed in with Google!", { id: loadingToastId });
+      get().connectSocket();
+      pushNotifications.requestPermission();
+    } catch (error) {
+      console.error("Error with Google OAuth:", error);
+      toast.error(
+        error.response?.data?.message || "Google sign in failed. Please try again.",
         { id: loadingToastId }
       );
     } finally {
@@ -145,28 +170,32 @@ const useAuthStore = create((set, get) => ({
   },
 
   connectSocket: () => {
-    const { authUser } = get();
+    const { authUser, socket: existingSocket } = get();
 
-    if (!authUser || get().socket?.connected) {
-      console.warn(
-        "⛔ Cannot connect: authUser missing or socket already connected."
-      );
-      return;
-    }
+    if (!authUser) return;
+    if (existingSocket?.connected) return;
 
-    const socket = io(BASE_URL, {
+    const userId = authUser?.data?._id || authUser?._id;
+    if (!userId) return;
+
+    const targetUrl = BASE_URL.replace(/\/+$/, "");
+
+    const socket = io(targetUrl, {
       withCredentials: true,
       auth: {
-        userId: authUser?.data?._id,
+        userId: userId,
       },
     });
 
+    socket.connect();
+
     socket.on("connect", () => {
-      console.log("✅ Connected to socket.io")
+      useCallStore.getState().initCallListeners();
+      useChatStore.getState().subscribeToMessages();
     });
 
-    socket.on("getOnlineUsers", (usersId) => {
-      set({ onlineUsers: usersId });
+    socket.on("getOnlineUsers", (userIds) => {
+      set({ onlineUsers: userIds });
     });
 
     socket.on("connect_error", (err) => {
@@ -177,7 +206,11 @@ const useAuthStore = create((set, get) => ({
   },
 
   disconnectSocket: () => {
-    if (get().socket?.connected) get().socket.disconnect();
+    const socket = get().socket;
+    if (socket) {
+      socket.disconnect();
+      set({ socket: null });
+    }
   },
 }));
 

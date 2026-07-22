@@ -1,4 +1,4 @@
 VITE_API_BACKEND_URL="http://localhost:3000/"
 VITE_API_BACKEND_URL_PRODUCTION=""
 MODE="development"
-VITE_API_ENCRYPTION_KEY=""
+VITE_API_ENCRYPTION_KEY="messagehub_secret_encryption_key_2026"

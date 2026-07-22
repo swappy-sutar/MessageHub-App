@@ -49,16 +49,6 @@ function LoginPage() {
             </p>
           </div>
 
-          {/* Google OAuth Button matching screenshot */}
-          <div className="space-y-3">
-            <GoogleOAuthButton />
-            <div className="flex items-center gap-3 my-2">
-              <div className="h-[1px] bg-base-300 flex-1" />
-              <span className="text-[11px] text-base-content/50 uppercase font-semibold">OR</span>
-              <div className="h-[1px] bg-base-300 flex-1" />
-            </div>
-          </div>
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
@@ -120,6 +110,17 @@ function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* OR Divider & Google OAuth Button Below Sign In Submit Button */}
+          <div className="space-y-4 pt-1">
+            <div className="flex items-center gap-3">
+              <div className="h-[1px] bg-base-300 flex-1" />
+              <span className="text-[11px] text-base-content/50 uppercase font-semibold">OR</span>
+              <div className="h-[1px] bg-base-300 flex-1" />
+            </div>
+
+            <GoogleOAuthButton />
+          </div>
 
           {/* Footer Link */}
           <div className="text-center pt-2 border-t border-base-300/60">

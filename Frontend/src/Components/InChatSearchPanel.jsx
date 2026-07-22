@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { Search, X, Calendar, CheckCheck, Check } from "lucide-react";
+import { Search, X, Calendar, CheckCheck } from "lucide-react";
 import { formatMessageTime } from "../utils/formatMessageTime";
 
 const InChatSearchPanel = ({ onClose }) => {
@@ -101,6 +101,11 @@ const InChatSearchPanel = ({ onClose }) => {
           <Search className="size-4 text-base-content/50" />
           <input
             type="text"
+            name="no-search-history-input"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
             placeholder="Search..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}

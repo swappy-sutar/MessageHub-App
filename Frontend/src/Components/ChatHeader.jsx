@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Phone, Video, ArrowLeft, Search, MoreVertical, BellOff } from "lucide-react";
+import { X, Phone, Video, ArrowLeft, MoreVertical, BellOff } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { useCallStore } from "../store/useCallStore";
@@ -78,17 +78,8 @@ const ChatHeader = () => {
         </div>
       </div>
 
-      {/* Right: Action buttons (Search, Video Call, Voice Call, 3-Dots Menu) */}
+      {/* Right: Action buttons (Video Call, Voice Call, 3-Dots Menu) */}
       <div className="flex items-center gap-1">
-        {/* Quick Search Button */}
-        <button
-          onClick={toggleSearch}
-          className="btn btn-sm btn-ghost btn-circle text-base-content/70 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Search in chat"
-        >
-          <Search className="size-4" />
-        </button>
-
         {/* Video Call */}
         <button
           onClick={() => startCall(selectedUser, "video")}

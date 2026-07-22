@@ -21,7 +21,7 @@ function HomePage() {
   const [activeTab, setActiveTab] = useState('chats');
 
   return (
-    <div className="h-screen w-full bg-base-100 pt-14 pb-16 lg:pb-0 transition-colors duration-300 overflow-hidden flex flex-col">
+    <div className={`h-screen w-full bg-base-100 pt-14 ${selectedUser ? "pb-0" : "pb-16 lg:pb-0"} transition-colors duration-300 overflow-hidden flex flex-col`}>
       <div className="flex-1 flex w-full h-full overflow-hidden">
         {/* Desktop View & Mobile Chats View */}
         {activeTab === 'chats' && (
@@ -78,8 +78,10 @@ function HomePage() {
         )}
       </div>
 
-      {/* Mobile Bottom Navigation Bar ("Chats", "Calls", "Updates") */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Mobile Bottom Navigation Bar ("Chats", "Calls", "Updates") - Hidden when inside active chat on mobile */}
+      {!selectedUser && (
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+      )}
     </div>
   );
 }

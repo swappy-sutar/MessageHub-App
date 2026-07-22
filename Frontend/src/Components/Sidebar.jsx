@@ -74,6 +74,11 @@ function Sidebar() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-base-content/40" />
           <input
             type="text"
+            name="no-sidebar-search-history"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Ask AI or Search contacts..."

@@ -5,6 +5,24 @@ import { cloudinaryConnect } from "../Config/cloudinary.config.js";
 import { ImageUploadCloudinary } from "../Utils/uploadToCloudinary.js";
 import { validateImageFile, cleanupTempFile } from "../Utils/fileValidation.js";
 
+// Helper to decode Google JWT ID token payload
+const parseGoogleCredential = (credential) => {
+  try {
+    const base64Url = credential.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      Buffer.from(base64, 'base64')
+        .toString('utf-8')
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 // Helper to generate unique invite code (e.g. MH-7X8K2M)
 const generateUniqueInviteCode = async () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -143,16 +161,28 @@ const loginUser = async (req, res) => {
 // Google OAuth Authentication Controller
 const googleAuth = async (req, res) => {
   try {
-    const { googleId, email, firstName, lastName, profilePic } = req.body;
+    let { credential, googleId, email, firstName, lastName, profilePic } = req.body;
+
+    // Decode Google ID Token if passed from Google GSI library
+    if (credential) {
+      const decodedPayload = parseGoogleCredential(credential);
+      if (decodedPayload) {
+        googleId = googleId || decodedPayload.sub;
+        email = email || decodedPayload.email;
+        firstName = firstName || decodedPayload.given_name;
+        lastName = lastName || decodedPayload.family_name || "";
+        profilePic = profilePic || decodedPayload.picture;
+      }
+    }
 
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Google email is required.",
+        message: "Google account email is required.",
       });
     }
 
-    let user = await User.findOne({ $or: [{ email }, { googleId }] });
+    let user = await User.findOne({ $or: [{ email: email.toLowerCase() }, { googleId }] });
 
     if (!user) {
       // Create new user for first-time Google login

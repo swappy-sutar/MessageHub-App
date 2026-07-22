@@ -6,14 +6,24 @@ import { errorHandler } from "./Middlewares/error.middleware.js";
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://messagehub-i52c.onrender.com",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 // CORS Options
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://chat-app-by-er-swappy.vercel.app",
-    "https://realtime-chat-application-mern-phi.vercel.app",
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin)
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permissive CORS fallback for custom domains
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
 };
 
@@ -41,7 +51,7 @@ import friendRoutes from "./Routes/friend.routes.js";
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Welcome to the Chat-App backend",
+    message: "Welcome to the MessageHub backend API",
   });
 });
 

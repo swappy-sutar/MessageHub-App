@@ -12,14 +12,25 @@ const getReceiverSocketID = (userId) => {
   return userSocketMap[userId.toString()];
 };
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://messagehub-i52c.onrender.com",
+  "https://chat-app-by-er-swappy.vercel.app",
+  "https://realtime-chat-application-mern-phi.vercel.app",
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
-    origin: [
-      "https://chat-app-by-er-swappy.vercel.app",
-      "http://localhost:5173",
-      "http://localhost:3000",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   },
 });

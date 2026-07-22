@@ -337,7 +337,7 @@ export const useChatStore = create((set, get) => ({
           },
         }));
 
-        toast(`💬 ${senderName}: ${decryptedMsg.text || "Sent an attachment"}`, {
+        toast(`${senderName}: ${decryptedMsg.text || "Sent an attachment"}`, {
           duration: 4000,
           icon: "💬",
         });

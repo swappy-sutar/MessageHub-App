@@ -15,9 +15,9 @@ import {
   MessageSquare,
   Camera,
   MoreVertical,
-  QrCode,
 } from "lucide-react";
 import InviteFriendModal from "./InviteFriendModal";
+import CameraCaptureModal from "./CameraCaptureModal";
 import { toast } from "react-hot-toast";
 
 const Navbar = () => {
@@ -29,6 +29,7 @@ const Navbar = () => {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   const notifRef = useRef(null);
   const menuRef = useRef(null);
@@ -56,8 +57,7 @@ const Navbar = () => {
 
   const handleCameraClick = () => {
     if (authUser) {
-      navigate("/profile");
-      toast("📸 Profile picture editor opened!", { icon: "📸" });
+      setIsCameraModalOpen(true);
     }
   };
 
@@ -83,11 +83,11 @@ const Navbar = () => {
             <div className="flex items-center gap-1.5 sm:gap-2">
               {authUser && (
                 <>
-                  {/* Quick Camera Action Icon */}
+                  {/* Quick Live Camera Action Icon */}
                   <button
                     onClick={handleCameraClick}
                     className="btn btn-sm btn-ghost btn-circle text-base-content/80 hover:text-primary hover:bg-base-200 transition-colors"
-                    title="Camera / Profile Photo"
+                    title="Live Camera Photo Capture"
                   >
                     <Camera className="w-5 h-5" />
                   </button>
@@ -299,6 +299,12 @@ const Navbar = () => {
       <InviteFriendModal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
+      />
+
+      {/* Live Camera Photo Capture Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
       />
     </>
   );

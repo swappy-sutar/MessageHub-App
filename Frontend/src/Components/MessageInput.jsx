@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmojiPickerSheet from "./EmojiPickerSheet";
+import CameraCaptureModal from "./CameraCaptureModal";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -22,6 +23,7 @@ const MessageInput = () => {
   const [imageFile, setImageFile] = useState(null);
   const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -75,6 +77,13 @@ const MessageInput = () => {
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
     setShowAttachSheet(false);
+  };
+
+  const handleCapturedPhotoFromCamera = (photoFile) => {
+    setImageFile(photoFile);
+    setImagePreview(URL.createObjectURL(photoFile));
+    setShowAttachSheet(false);
+    toast.success("Camera photo captured!");
   };
 
   const removeImage = () => {
@@ -220,6 +229,13 @@ const MessageInput = () => {
         onDeleteChar={() => handleTyping(text.slice(0, -1))}
       />
 
+      {/* Live Camera Photo Capture Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onSendCapturedPhoto={handleCapturedPhotoFromCamera}
+      />
+
       {/* WhatsApp Style Attachment Bottom Sheet */}
       {showAttachSheet && (
         <div
@@ -241,10 +257,13 @@ const MessageInput = () => {
               <span className="text-xs font-medium text-base-content/80">Gallery</span>
             </button>
 
-            {/* Camera Option */}
+            {/* Live Camera Option */}
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => {
+                setShowAttachSheet(false);
+                setIsCameraModalOpen(true);
+              }}
               className="flex flex-col items-center gap-1.5 group cursor-pointer"
             >
               <div className="size-12 rounded-2xl bg-pink-500/10 border border-pink-500/20 text-pink-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
@@ -324,12 +343,12 @@ const MessageInput = () => {
             <Paperclip className="size-5 rotate-45" />
           </button>
 
-          {/* Quick Camera Attachment Button */}
+          {/* Quick Camera Capture Button */}
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setIsCameraModalOpen(true)}
             className="text-base-content/50 hover:text-base-content transition-colors p-1"
-            title="Camera / Gallery"
+            title="Live Camera Photo"
           >
             <Camera className="size-5" />
           </button>

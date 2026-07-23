@@ -62,15 +62,6 @@ const SettingsDrawer = () => {
   const [bgSync, setBgSync] = useState(true);
   const [joinBeta, setJoinBeta] = useState(false);
 
-  if (!isSettingsOpen) return null;
-
-  const currentUserObj = authUser?.data || authUser;
-  const userName = currentUserObj?.firstName
-    ? `${currentUserObj.firstName} ${currentUserObj.lastName || ""}`.trim()
-    : "User";
-  const userEmail = currentUserObj?.email || "";
-  const inviteCode = currentUserObj?.inviteCode || currentUserObj?._id?.slice(-8).toUpperCase() || "MH-USER";
-
   const drawerRef = useRef(null);
 
   const close = () => {
@@ -91,6 +82,15 @@ const SettingsDrawer = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isSettingsOpen]);
+
+  if (!isSettingsOpen) return null;
+
+  const currentUserObj = authUser?.data || authUser;
+  const userName = currentUserObj?.firstName
+    ? `${currentUserObj.firstName} ${currentUserObj.lastName || ""}`.trim()
+    : "User";
+  const userEmail = currentUserObj?.email || "";
+  const inviteCode = currentUserObj?.inviteCode || currentUserObj?._id?.slice(-8).toUpperCase() || "MH-USER";
 
   const handleUpdateProfile = async (e) => {
     const file = e.target.files[0];

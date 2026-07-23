@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import AuthImagePattern from "../Components/AuthImagePattern";
 import ThemeSwitcher from "../Components/ThemeSwitcher";
 import GoogleOAuthButton from "../Components/GoogleOAuthButton";
+import MessageHubLogo from "../Components/MessageHubLogo";
 import { toast } from "react-hot-toast";
 
 function SignupPage() {
@@ -62,10 +63,8 @@ function SignupPage() {
           </div>
 
           {/* Logo & Header */}
-          <div className="text-center pt-2">
-            <div className="size-14 mx-auto mb-4 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner group hover:scale-110 transition-transform">
-              <MessageSquare className="size-7 text-primary" />
-            </div>
+          <div className="text-center pt-2 flex flex-col items-center">
+            <MessageHubLogo variant="mark" className="size-14 mb-3 drop-shadow-md hover:scale-105 transition-transform" />
             <h1 className="text-3xl font-extrabold text-base-content tracking-tight">Create Account</h1>
             <p className="text-sm text-base-content/60 mt-1 font-normal">
               Join MessageHub and start connecting

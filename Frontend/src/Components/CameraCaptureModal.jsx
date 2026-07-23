@@ -142,7 +142,7 @@ const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 lg:left-80 lg:top-14 z-40 bg-[#0b141a] flex flex-col select-none overflow-hidden animate-fade-in border-l border-white/10">
+    <div className="fixed inset-0 lg:left-80 lg:top-14 z-[60] bg-[#0b141a] flex flex-col select-none overflow-hidden animate-fade-in border-l border-white/10">
       {/* Top Header Bar */}
       <div className="bg-[#111b21] border-b border-white/10 flex flex-col flex-shrink-0 z-20 text-white">
         {/* Selected Contact Bar (if active chat thread) */}
@@ -221,7 +221,7 @@ const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
 
       {/* Bottom Control Bar */}
       {capturedImage ? (
-        <div className="p-4 sm:p-6 bg-[#111b21] border-t border-white/10 flex flex-col gap-4 flex-shrink-0 z-20">
+        <div className="p-4 pb-8 sm:p-6 bg-[#111b21] border-t border-white/10 flex flex-col gap-4 flex-shrink-0 z-20">
           {/* Recipient Selection Dropdown if no active chat */}
           {!selectedUser && (
             <div className="max-w-md mx-auto w-full">
@@ -265,7 +265,7 @@ const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
           </div>
         </div>
       ) : (
-        <div className="py-4 bg-[#111b21] border-t border-white/10 flex flex-col items-center justify-center gap-2.5 flex-shrink-0 z-20 px-4">
+        <div className="py-5 pb-8 sm:py-4 bg-[#111b21] border-t border-white/10 flex flex-col items-center justify-center gap-2.5 flex-shrink-0 z-20 px-4">
           {/* Center Large Green Camera Shutter Button */}
           <button
             type="button"

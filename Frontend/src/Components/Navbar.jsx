@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import InviteFriendModal from "./InviteFriendModal";
 import CameraCaptureModal from "./CameraCaptureModal";
+import MessageHubLogo from "./MessageHubLogo";
 import { toast } from "react-hot-toast";
 
 const Navbar = () => {
@@ -70,14 +71,9 @@ const Navbar = () => {
             {/* Left: Brand Logo & Title */}
             <Link
               to="/"
-              className="flex items-center gap-2.5 hover:opacity-80 transition-all group"
+              className="flex items-center gap-2.5 hover:opacity-85 transition-all group"
             >
-              <div className="size-9 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <MessageCircle className="w-5 h-5 text-primary" />
-              </div>
-              <h1 className="text-xl font-bold text-base-content tracking-tight">
-                MessageHub
-              </h1>
+              <MessageHubLogo variant="lockup" size="md" />
             </Link>
 
             {/* Right: Action Icons (Camera, Notifications, 3-Dots Menu) */}

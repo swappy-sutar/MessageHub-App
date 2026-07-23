@@ -12,8 +12,7 @@ import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 import { useCallStore } from "./store/useCallStore";
 import { useChatStore } from "./store/useChatStore";
-import { Loader } from "lucide-react";
-
+import { MessageHubLoadingSpinner } from "./Components/MessageHubLogo";
 import InviteLinkHandler from "./Components/InviteLinkHandler";
 
 function App() {
@@ -36,8 +35,8 @@ function App() {
 
   if (isCheckingAuth) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-100">
-        <Loader className="w-10 h-10 text-primary animate-spin" />
+      <div className="flex items-center justify-center h-screen bg-base-100" data-theme={theme}>
+        <MessageHubLoadingSpinner stateText="Initializing MessageHub..." />
       </div>
     );
   }

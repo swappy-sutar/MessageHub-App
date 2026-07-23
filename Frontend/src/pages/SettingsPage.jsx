@@ -19,9 +19,9 @@ function SettingsPage() {
       <div className="container mx-auto max-w-6xl space-y-6">
         {/* Page Title */}
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-base-content">Settings</h1>
+          <h1 className="text-2xl font-bold text-base-content">Themes</h1>
           <p className="text-sm text-base-content/60">
-            Personalize your MessageHub experience
+            Personalize your MessageHub color theme
           </p>
         </div>
 

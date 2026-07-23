@@ -7,6 +7,7 @@ import {
   LogOut,
   MessageCircle,
   Settings,
+  Palette,
   User,
   Bell,
   Check,
@@ -259,8 +260,8 @@ const Navbar = () => {
                           onClick={() => setIsMenuOpen(false)}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-base-content hover:bg-base-200 transition-colors"
                         >
-                          <Settings className="size-4 text-primary" />
-                          Settings
+                          <Palette className="size-4 text-primary" />
+                          Themes
                         </Link>
 
                         <div className="divider my-1 border-base-300" />
@@ -286,8 +287,8 @@ const Navbar = () => {
                   to="/settings"
                   className="btn btn-sm btn-ghost gap-2 border border-base-300 hover:bg-base-200 transition-colors"
                 >
-                  <Settings className="w-4 h-4 text-base-content/70" />
-                  <span className="text-xs font-medium">Settings</span>
+                  <Palette className="w-4 h-4 text-base-content/70" />
+                  <span className="text-xs font-medium">Themes</span>
                 </Link>
               )}
             </div>

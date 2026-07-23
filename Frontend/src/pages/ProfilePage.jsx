@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import { Camera, Mail, User, Shield, Calendar, QrCode, Copy, Check } from "lucide-react";
+import { Camera, Mail, User, Shield, Calendar, QrCode, Copy, Check, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import avatarLogo from "../assets/avatar.png";
 
@@ -8,6 +9,7 @@ function ProfilePage() {
   const { authUser, isUpdateProfile, updateProfile } = useAuthStore();
   const [selectedImg, setSelectedImg] = useState(null);
   const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
 
   const currentUserObj = authUser?.data || authUser;
   const inviteCode = currentUserObj?.inviteCode || currentUserObj?._id || "MH-USER";
@@ -34,10 +36,23 @@ function ProfilePage() {
     <div className="min-h-screen pt-20 pb-10 px-4 bg-base-200 transition-colors duration-300">
       <div className="max-w-2xl mx-auto">
         <div className="bg-base-100 rounded-2xl p-6 sm:p-8 space-y-8 border border-base-300 shadow-xl">
-          {/* Title Header */}
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-base-content">Profile</h1>
-            <p className="text-sm text-base-content/60 mt-1">Your profile information</p>
+          {/* Title Header with Go Back Button */}
+          <div className="flex items-center justify-between border-b border-base-300 pb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="btn btn-sm btn-ghost gap-1.5 text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-xl"
+              title="Go Back"
+            >
+              <ArrowLeft className="size-4" />
+              <span className="text-xs font-semibold">Back</span>
+            </button>
+
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-base-content">Profile</h1>
+              <p className="text-xs text-base-content/60">Your profile information</p>
+            </div>
+
+            <div className="w-16" />
           </div>
 
           {/* Avatar Section */}

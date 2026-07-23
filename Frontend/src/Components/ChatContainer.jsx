@@ -1,5 +1,5 @@
 import { useChatStore } from "../store/useChatStore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo, Fragment } from "react";
 
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
@@ -9,7 +9,7 @@ import MessageContextMenu from "./MessageContextMenu";
 import MessageInfoModal from "./MessageInfoModal";
 import DeleteMessageModal from "./DeleteMessageModal";
 import { useAuthStore } from "../store/useAuthStore";
-import { formatMessageTime } from "../utils/formatMessageTime.js";
+import { formatMessageTime, formatMessageDate, isSameDay } from "../utils/formatMessageTime.js";
 import avatar from "../assets/avatar.png";
 import { Phone, Video, PhoneMissed, Reply, CornerUpRight, Check, CheckCheck, MoreVertical, Ban } from "lucide-react";
 
@@ -41,7 +41,7 @@ function SwipeableMessageItem({
 
   const isImageOnly =
     message.image && !message.text && !message.replyTo && !message.isForwarded;
-  const bubblePadding = isImageOnly ? "p-1" : "p-2 px-3";
+  const bubblePadding = isImageOnly ? "p-1" : "py-1.5 px-3 sm:py-2 sm:px-3.5";
 
   const handleTouchStart = (e) => {
     if (e.touches.length !== 1) return;
@@ -93,7 +93,7 @@ function SwipeableMessageItem({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`chat ${isMine ? "chat-end" : "chat-start"} message-animate group relative w-full transition-all duration-300 p-1 rounded-2xl overflow-hidden ${
+      className={`flex ${isMine ? "justify-end" : "justify-start"} message-animate group relative w-full transition-all duration-300 py-0.5 px-1 ${
         isHighlighted ? "whatsapp-row-highlight" : ""
       }`}
     >
@@ -123,27 +123,13 @@ function SwipeableMessageItem({
         </div>
       )}
 
-      {/* Profile Avatar */}
-      <div className="chat-image avatar select-none">
-        <div className="size-8 rounded-full border border-base-300 shadow-sm">
-          <img
-            src={
-              isMine
-                ? currentUserPic || avatar
-                : selectedUser?.profilePic || avatar
-            }
-            alt="profile"
-          />
-        </div>
-      </div>
-
-      {/* Message Bubble + Action Buttons Container */}
+      {/* Message Bubble Container */}
       <div
         style={{
           transform: swipeOffset ? `translateX(${swipeOffset}px)` : "none",
           transition: swipeOffset ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
-        className={`flex items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"} max-w-[85%] sm:max-w-[70%]`}
+        className={`flex items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"} max-w-[85%] sm:max-w-[72%] md:max-w-[65%]`}
       >
         {/* Bubble Content */}
         <div
@@ -155,7 +141,7 @@ function SwipeableMessageItem({
               ? "bg-base-200/60 text-base-content/60 border border-base-300 italic"
               : isCallLog
               ? isMissed || isDeclined
-                ? "bg-error/10 text-error border border-error/20"
+                ? "bg-error/15 text-error border border-error/20"
                 : "bg-base-200 text-base-content border border-base-300"
               : isMine
               ? "bg-primary text-primary-content rounded-tr-none"
@@ -188,7 +174,7 @@ function SwipeableMessageItem({
                     const targetId = getReplyTargetId(message.replyTo);
                     if (targetId) handleScrollToMessage(targetId);
                   }}
-                  className={`mb-2 p-2 rounded-xl border-l-4 text-xs cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all select-none ${
+                  className={`mb-1.5 p-1.5 px-2.5 rounded-xl border-l-4 text-xs cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all select-none ${
                     isMine
                       ? "bg-black/20 border-primary-content/80 text-primary-content hover:bg-black/30"
                       : "bg-base-300/80 border-primary text-base-content hover:bg-base-300"
@@ -226,21 +212,21 @@ function SwipeableMessageItem({
 
               {/* Text Message Content & Inline Time/Ticks */}
               {message.text && (
-                <div className="inline-flex items-end flex-wrap gap-x-2.5 gap-y-0.5 max-w-full">
+                <div className="inline-flex items-end flex-wrap gap-x-2 gap-y-0.5 max-w-full">
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     {isCallLog && (
-                      <div className="p-1 rounded-full bg-base-100/50 flex-shrink-0">
+                      <div className="p-0.5 rounded-full bg-base-100/50 flex-shrink-0">
                         {isMissed ? (
-                          <PhoneMissed className="size-4 text-error" />
+                          <PhoneMissed className="size-3.5 text-error" />
                         ) : message.text.startsWith("📹") ? (
-                          <Video className="size-4 text-primary" />
+                          <Video className="size-3.5 text-primary" />
                         ) : (
-                          <Phone className="size-4 text-success" />
+                          <Phone className="size-3.5 text-success" />
                         )}
                       </div>
                     )}
-                    <span className="text-sm font-normal leading-relaxed break-words">
-                      {message.text}
+                    <span className="text-[13.5px] sm:text-sm font-normal leading-snug break-words">
+                      {isCallLog ? message.text.replace(/^[^a-zA-Z0-9]+/, "").trim() : message.text}
                     </span>
                   </div>
 
@@ -257,35 +243,7 @@ function SwipeableMessageItem({
           )}
         </div>
 
-        {/* Action Buttons - Visible on mobile touch screens & on hover on desktop */}
-        {!message.deletedForEveryone && (
-          <div className="flex sm:hidden sm:group-hover:flex items-center gap-1 flex-shrink-0 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button
-              type="button"
-              onClick={(e) => handleOpenContextMenu(e, message)}
-              className="btn btn-circle btn-xs btn-ghost bg-base-200/80 border border-base-300 shadow-sm hover:scale-110"
-              title="Message Options"
-            >
-              <MoreVertical className="size-3 text-base-content/70" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setReplyingTo(message)}
-              className="btn btn-circle btn-xs btn-ghost bg-base-200/80 border border-base-300 shadow-sm hover:scale-110"
-              title="Reply"
-            >
-              <Reply className="size-3 text-base-content/70" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setForwardModalMessage(message)}
-              className="btn btn-circle btn-xs btn-ghost bg-base-200/80 border border-base-300 shadow-sm hover:scale-110"
-              title="Forward"
-            >
-              <CornerUpRight className="size-3 text-base-content/70" />
-            </button>
-          </div>
-        )}
+        {/* Message Bubble */}
       </div>
     </div>
   );
@@ -354,6 +312,29 @@ function ChatContainer() {
     }
   }, [messages, isTyping]);
 
+  // Group consecutive messages by date into day sections for WhatsApp sticky date headers
+  const messageGroups = useMemo(() => {
+    if (!messages || messages.length === 0) return [];
+    const groups = [];
+    let currentGroup = null;
+
+    messages.forEach((message) => {
+      const dateLabel = formatMessageDate(message.createdAt);
+      if (!currentGroup || currentGroup.dateLabel !== dateLabel) {
+        currentGroup = {
+          dateLabel,
+          key: message._id || dateLabel,
+          messages: [message],
+        };
+        groups.push(currentGroup);
+      } else {
+        currentGroup.messages.push(message);
+      }
+    });
+
+    return groups;
+  }, [messages]);
+
   if (isMessagesLoading) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-base-100 w-full">
@@ -377,36 +358,52 @@ function ChatContainer() {
   // Render Status Ticks
   const renderMessageTicks = (message) => {
     if (message.isRead) {
-      return <CheckCheck className="size-3.5 text-[#53bdeb] font-bold" title="Read" />;
+      return (
+        <CheckCheck
+          className="size-3.5 text-[#38bdf8] stroke-[2.5] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
+          title="Read"
+        />
+      );
     }
     if (message.isDelivered) {
-      return <CheckCheck className="size-3.5 text-base-content/60" title="Delivered" />;
+      return <CheckCheck className="size-3.5 opacity-80 stroke-[2] filter drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" title="Delivered" />;
     }
-    return <Check className="size-3.5 text-base-content/50" title="Sent (Receiver Offline)" />;
+    return <Check className="size-3.5 opacity-70 stroke-[2] filter drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" title="Sent" />;
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-base-100 transition-colors duration-300 relative w-full h-full">
+    <div className="flex-1 flex flex-col overflow-hidden whatsapp-chat-bg transition-colors duration-300 relative w-full h-full">
       <ChatHeader />
 
       {/* Messages area with strict vertical-only scrolling */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 space-y-3 w-full">
-        {messages.map((message) => (
-          <SwipeableMessageItem
-            key={message._id}
-            message={message}
-            currentUserId={currentUserId}
-            authUser={authUser}
-            selectedUser={selectedUser}
-            isHighlighted={highlightedMessageId && String(highlightedMessageId) === String(message._id)}
-            messageEndRef={messageEndRef}
-            handleOpenContextMenu={handleOpenContextMenu}
-            handleScrollToMessage={handleScrollToMessage}
-            getReplyTargetId={getReplyTargetId}
-            renderMessageTicks={renderMessageTicks}
-            setReplyingTo={setReplyingTo}
-            setForwardModalMessage={setForwardModalMessage}
-          />
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3 w-full">
+        {messageGroups.map((group) => (
+          <div key={group.key} className="relative space-y-3">
+            {/* WhatsApp Floating Sticky Date Header bounded within its day section */}
+            <div className="sticky top-2 z-10 flex justify-center my-2 pointer-events-none">
+              <div className="whatsapp-date-badge shadow-md pointer-events-auto">
+                {group.dateLabel}
+              </div>
+            </div>
+
+            {group.messages.map((message) => (
+              <SwipeableMessageItem
+                key={message._id}
+                message={message}
+                currentUserId={currentUserId}
+                authUser={authUser}
+                selectedUser={selectedUser}
+                isHighlighted={highlightedMessageId && String(highlightedMessageId) === String(message._id)}
+                messageEndRef={messageEndRef}
+                handleOpenContextMenu={handleOpenContextMenu}
+                handleScrollToMessage={handleScrollToMessage}
+                getReplyTargetId={getReplyTargetId}
+                renderMessageTicks={renderMessageTicks}
+                setReplyingTo={setReplyingTo}
+                setForwardModalMessage={setForwardModalMessage}
+              />
+            ))}
+          </div>
         ))}
 
         {/* WhatsApp Animated Bouncing Dots Typing Bubble */}

@@ -82,7 +82,12 @@ const useAuthStore = create((set, get) => ({
       const response = await axiosInstance.post("/auth/login", data);
       set({ authUser: response.data });
 
-      Cookies.set("token", response.data.token, { expires: 2, secure: true });
+      if (response.data.token || response.data.accessToken) {
+        Cookies.set("token", response.data.token || response.data.accessToken, { expires: 1, secure: true });
+      }
+      if (response.data.refreshToken) {
+        Cookies.set("refreshToken", response.data.refreshToken, { expires: 7, secure: true });
+      }
 
       toast.success("Logged in successfully!", { id: loadingToastId });
 
@@ -107,8 +112,11 @@ const useAuthStore = create((set, get) => ({
       const response = await axiosInstance.post("/auth/google", googleData);
       set({ authUser: response.data });
 
-      if (response.data.token) {
-        Cookies.set("token", response.data.token, { expires: 2, secure: true });
+      if (response.data.token || response.data.accessToken) {
+        Cookies.set("token", response.data.token || response.data.accessToken, { expires: 1, secure: true });
+      }
+      if (response.data.refreshToken) {
+        Cookies.set("refreshToken", response.data.refreshToken, { expires: 7, secure: true });
       }
 
       toast.success("Signed in with Google!", { id: loadingToastId });
@@ -131,7 +139,7 @@ const useAuthStore = create((set, get) => ({
     const loadingToastId = toast.loading("Updating profile...");
 
     try {
-      const token = Cookies.get("token");
+      const token = Cookies.get("token") || Cookies.get("accessToken");
 
       if (!token) {
         toast.error("Authentication token not found.");
@@ -163,22 +171,49 @@ const useAuthStore = create((set, get) => ({
   logout: async () => {
     set({ isLoading: true });
     try {
-      const token = Cookies.get("token");
-
-      if (!token) {
-        toast.error("You are not logged in.");
-        return;
-      }
       await axiosInstance.post("/auth/logout");
-      toast.success("Logged out successfully!");
-      get().disconnectSocket();
+      toast.success("Logged out from this device!");
     } catch (error) {
       console.error("Error logging out:", error);
-      toast.error(
-        error.response?.data?.message || "Error logging out. Please try again."
-      );
     } finally {
+      Cookies.remove("token");
+      Cookies.remove("refreshToken");
+      get().disconnectSocket();
       set({ authUser: null, isLoading: false });
+    }
+  },
+
+  logoutAllDevices: async () => {
+    set({ isLoading: true });
+    try {
+      await axiosInstance.post("/auth/logout-all");
+      toast.success("Logged out from all devices!");
+    } catch (error) {
+      console.error("Error logging out all devices:", error);
+      toast.error(error.response?.data?.message || "Failed to logout from all devices.");
+    } finally {
+      Cookies.remove("token");
+      Cookies.remove("refreshToken");
+      get().disconnectSocket();
+      set({ authUser: null, isLoading: false });
+    }
+  },
+
+  handleSessionExpired: () => {
+    Cookies.remove("token");
+    Cookies.remove("refreshToken");
+    get().disconnectSocket();
+    set({ authUser: null });
+    toast.error("Session expired. Please log in again.", { id: "session-expired-toast" });
+  },
+
+  getActiveSessions: async () => {
+    try {
+      const response = await axiosInstance.get("/auth/sessions");
+      return response.data?.sessions || [];
+    } catch (error) {
+      console.error("Error getting active sessions:", error);
+      return [];
     }
   },
 

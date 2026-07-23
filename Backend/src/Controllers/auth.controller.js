@@ -1,6 +1,12 @@
 import { User } from "../Models/user.model.js";
 import bcrypt from "bcryptjs";
-import { generateToken } from "../Utils/utils.js";
+import JWT from "jsonwebtoken";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  createSessionAndTokens,
+  parseDeviceInfo,
+} from "../Utils/utils.js";
 import { cloudinaryConnect } from "../Config/cloudinary.config.js";
 import { ImageUploadCloudinary } from "../Utils/uploadToCloudinary.js";
 import { validateImageFile, cleanupTempFile } from "../Utils/fileValidation.js";
@@ -132,22 +138,17 @@ const loginUser = async (req, res) => {
       await user.save();
     }
 
-    const payload = {
-      id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    };
+    const { accessToken, refreshToken } = await createSessionAndTokens(user, req, res);
 
     user.password = undefined;
-
-    const token = generateToken(payload, res);
 
     return res.status(200).json({
       success: true,
       message: "User logged in successfully",
       data: user,
-      token,
+      token: accessToken,
+      accessToken,
+      refreshToken,
     });
   } catch (error) {
     console.error("Error in loginUser:", error.stack || error);
@@ -216,22 +217,17 @@ const googleAuth = async (req, res) => {
       if (updated) await user.save();
     }
 
-    const payload = {
-      id: user._id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    };
+    const { accessToken, refreshToken } = await createSessionAndTokens(user, req, res);
 
     user.password = undefined;
-
-    const token = generateToken(payload, res);
 
     return res.status(200).json({
       success: true,
       message: "Google authentication successful",
       data: user,
-      token,
+      token: accessToken,
+      accessToken,
+      refreshToken,
     });
   } catch (error) {
     console.error("Error in googleAuth:", error.stack || error);
@@ -335,14 +331,128 @@ const checkAuth = async (req, res) => {
   }
 };
 
-const logout = (req, res) => {
+// Refresh Access Token endpoint using valid Refresh Token
+const refreshTokenController = async (req, res) => {
   try {
+    const refreshToken =
+      req.cookies?.refreshToken ||
+      req.body?.refreshToken ||
+      req.header("x-refresh-token");
+
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        code: "REFRESH_TOKEN_MISSING",
+        message: "Refresh token missing. Please log in again.",
+      });
+    }
+
+    const refreshSecret =
+      process.env.REFRESH_TOKEN_SECRET ||
+      (process.env.JWT_SECRET_KEY + "_refresh") ||
+      "messagehub_refresh_secret_key";
+
+    let decoded;
+    try {
+      decoded = JWT.verify(refreshToken, refreshSecret);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        code: "REFRESH_TOKEN_EXPIRED",
+        message: "Refresh token expired or invalid. Please log in again.",
+      });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        code: "USER_NOT_FOUND",
+        message: "User account no longer exists.",
+      });
+    }
+
+    // Verify session active in user.sessions array
+    const sessionIndex = user.sessions?.findIndex(
+      (s) => s.refreshToken === refreshToken
+    );
+
+    if (sessionIndex === -1 || sessionIndex === undefined) {
+      return res.status(401).json({
+        success: false,
+        code: "SESSION_REVOKED",
+        message: "Session has been logged out or revoked.",
+      });
+    }
+
+    // Generate new Access Token
+    const payload = {
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    };
+
+    const newAccessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken({ id: user._id, email: user.email });
+
+    // Rotate refresh token in session entry
+    user.sessions[sessionIndex].refreshToken = newRefreshToken;
+    user.sessions[sessionIndex].createdAt = new Date();
+    await user.save();
+
+    const isProduction = process.env.NODE_ENV === "production";
+    res.cookie("token", newAccessToken, {
+      httpOnly: false,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+      token: newAccessToken,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    });
+  } catch (error) {
+    console.error("Error in refreshTokenController:", error.stack || error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to refresh token. Please log in again.",
+    });
+  }
+};
+
+// Logout from Current Device
+const logout = async (req, res) => {
+  try {
+    const refreshToken =
+      req.cookies?.refreshToken ||
+      req.body?.refreshToken ||
+      req.header("x-refresh-token");
+
+    if (req.user?._id && refreshToken) {
+      await User.findByIdAndUpdate(req.user._id, {
+        $pull: { sessions: { refreshToken } },
+      });
+    }
+
     return res
-      .cookie("token", "", { maxAge: 0, httpOnly: true })
+      .cookie("token", "", { maxAge: 0, httpOnly: false })
+      .cookie("refreshToken", "", { maxAge: 0, httpOnly: true })
       .status(200)
       .json({
         success: true,
-        message: "Logged out successfully",
+        message: "Logged out from this device successfully",
       });
   } catch (error) {
     console.error("Error in logout:", error.stack || error);
@@ -353,4 +463,67 @@ const logout = (req, res) => {
   }
 };
 
-export { signupUser, loginUser, googleAuth, updateProfile, checkAuth, logout };
+// Logout from ALL Active Devices
+const logoutAll = async (req, res) => {
+  try {
+    if (req.user?._id) {
+      await User.findByIdAndUpdate(req.user._id, {
+        $set: { sessions: [] },
+      });
+    }
+
+    return res
+      .cookie("token", "", { maxAge: 0, httpOnly: false })
+      .cookie("refreshToken", "", { maxAge: 0, httpOnly: true })
+      .status(200)
+      .json({
+        success: true,
+        message: "Logged out from all devices successfully",
+      });
+  } catch (error) {
+    console.error("Error in logoutAll:", error.stack || error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to logout all devices.",
+    });
+  }
+};
+
+// Get List of Active Device Sessions for User
+const getActiveSessions = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    const currentRefreshToken = req.cookies?.refreshToken || req.header("x-refresh-token");
+
+    const sessions = (user?.sessions || []).map((s) => ({
+      id: s._id,
+      deviceInfo: s.deviceInfo,
+      ipAddress: s.ipAddress,
+      createdAt: s.createdAt,
+      isCurrentSession: s.refreshToken === currentRefreshToken,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      sessions,
+    });
+  } catch (error) {
+    console.error("Error in getActiveSessions:", error.stack || error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch active sessions.",
+    });
+  }
+};
+
+export {
+  signupUser,
+  loginUser,
+  googleAuth,
+  updateProfile,
+  checkAuth,
+  refreshTokenController,
+  logout,
+  logoutAll,
+  getActiveSessions,
+};

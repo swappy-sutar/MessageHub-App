@@ -56,6 +56,14 @@ const UserSchema = new Schema(
         ref: "User",
       },
     ],
+    sessions: [
+      {
+        refreshToken: { type: String, required: true },
+        deviceInfo: { type: String, default: "Unknown Device" },
+        ipAddress: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

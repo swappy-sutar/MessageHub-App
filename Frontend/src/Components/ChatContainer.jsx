@@ -8,8 +8,10 @@ import ForwardMessageModal from "./ForwardMessageModal";
 import MessageContextMenu from "./MessageContextMenu";
 import MessageInfoModal from "./MessageInfoModal";
 import DeleteMessageModal from "./DeleteMessageModal";
+import MediaLightboxModal from "./MediaLightboxModal";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime, formatMessageDate, isSameDay } from "../utils/formatMessageTime.js";
+import { extractFirstUrl, getLinkPreviewData } from "../utils/linkPreview.js";
 import avatar from "../assets/avatar.png";
 import { Phone, Video, PhoneMissed, Reply, CornerUpRight, Check, CheckCheck, MoreVertical, Ban } from "lucide-react";
 
@@ -27,12 +29,41 @@ function SwipeableMessageItem({
   renderMessageTicks,
   setReplyingTo,
   setForwardModalMessage,
+  onOpenLightbox,
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartRef = useRef({ x: 0, y: 0, isHorizontal: false });
 
   const isMine = String(message.senderId) === String(currentUserId);
-  const currentUserPic = authUser?.data?.profilePic || authUser?.profilePic;
+  const detectedUrl = extractFirstUrl(message.text);
+  const linkPreviewData = detectedUrl ? getLinkPreviewData(detectedUrl) : null;
+
+  const renderTextWithLinks = (rawText) => {
+    if (!rawText) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const parts = rawText.split(urlRegex);
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className={`${
+              isMine
+                ? "text-white hover:text-white/90 drop-shadow-sm font-semibold"
+                : "text-primary hover:text-primary/90 font-semibold"
+            } underline break-all select-text transition-colors`}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
   const isCallLog =
     message.text &&
     (message.text.startsWith("📹") || message.text.startsWith("📞"));
@@ -193,7 +224,11 @@ function SwipeableMessageItem({
               {/* Image Attachment View */}
               {message.image && (
                 <div
-                  onClick={(e) => handleOpenContextMenu(e, message)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenLightbox) onOpenLightbox(message);
+                  }}
+                  onContextMenu={(e) => handleOpenContextMenu(e, message)}
                   className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] cursor-pointer group/img"
                 >
                   <img
@@ -208,6 +243,43 @@ function SwipeableMessageItem({
                     {isMine && renderMessageTicks(message)}
                   </div>
                 </div>
+              )}
+
+              {/* Rich Link Preview Card (WhatsApp Style) */}
+              {linkPreviewData && (
+                <a
+                  href={linkPreviewData.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`block mb-2 p-2.5 rounded-xl border-l-4 text-xs transition-colors select-text group/link ${
+                    isMine
+                      ? "bg-black/30 border-white/90 text-white hover:bg-black/40"
+                      : "bg-base-300/70 border-primary text-base-content hover:bg-base-300"
+                  }`}
+                >
+                  <div
+                    className={`font-bold text-sm leading-snug mb-1 group-hover/link:underline ${
+                      isMine ? "text-white drop-shadow-sm" : "text-primary"
+                    }`}
+                  >
+                    {linkPreviewData.title}
+                  </div>
+                  <div
+                    className={`text-[11.5px] leading-relaxed mb-1 line-clamp-2 ${
+                      isMine ? "text-white/90" : "text-base-content/85"
+                    }`}
+                  >
+                    {linkPreviewData.description}
+                  </div>
+                  <div
+                    className={`text-[10px] font-mono ${
+                      isMine ? "text-white/70" : "text-base-content/60"
+                    }`}
+                  >
+                    {linkPreviewData.domain}
+                  </div>
+                </a>
               )}
 
               {/* Text Message Content & Inline Time/Ticks */}
@@ -226,7 +298,9 @@ function SwipeableMessageItem({
                       </div>
                     )}
                     <span className="text-[13.5px] sm:text-sm font-normal leading-snug break-words">
-                      {isCallLog ? message.text.replace(/^[^a-zA-Z0-9]+/, "").trim() : message.text}
+                      {isCallLog
+                        ? message.text.replace(/^[^a-zA-Z0-9]+/, "").trim()
+                        : renderTextWithLinks(message.text)}
                     </span>
                   </div>
 
@@ -268,6 +342,7 @@ function ChatContainer() {
   const [deleteModalMessage, setDeleteModalMessage] = useState(null);
   const [contextMenuState, setContextMenuState] = useState(null);
   const [infoModalMessage, setInfoModalMessage] = useState(null);
+  const [lightboxMediaMessage, setLightboxMediaMessage] = useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
 
   const isTyping = typingUsers[selectedUser?._id];
@@ -401,6 +476,7 @@ function ChatContainer() {
                 renderMessageTicks={renderMessageTicks}
                 setReplyingTo={setReplyingTo}
                 setForwardModalMessage={setForwardModalMessage}
+                onOpenLightbox={(msg) => setLightboxMediaMessage(msg)}
               />
             ))}
           </div>
@@ -466,6 +542,17 @@ function ChatContainer() {
         <ForwardMessageModal
           message={forwardModalMessage}
           onClose={() => setForwardModalMessage(null)}
+        />
+      )}
+
+      {/* WhatsApp Fullscreen Media Lightbox Viewer Modal */}
+      {lightboxMediaMessage && (
+        <MediaLightboxModal
+          message={lightboxMediaMessage}
+          currentUserId={currentUserId}
+          selectedUser={selectedUser}
+          onClose={() => setLightboxMediaMessage(null)}
+          onForward={(msg) => setForwardModalMessage(msg)}
         />
       )}
     </div>

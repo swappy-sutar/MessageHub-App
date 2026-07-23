@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useFriendStore } from "../store/useFriendStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { toast } from "react-hot-toast";
-import { X, Search, UserPlus, Check, Inbox, Copy, QrCode, Sparkles } from "lucide-react";
+import { X, Search, UserPlus, Check, Inbox, Copy, QrCode, Sparkles, Link, Share2 } from "lucide-react";
 import avatar from "../assets/avatar.png";
 
 function InviteFriendModal({ isOpen, onClose }) {
@@ -23,10 +23,12 @@ function InviteFriendModal({ isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState("search"); // 'search' | 'invites'
   const [query, setQuery] = useState("");
   const [codeInputValue, setCodeInputValue] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const currentUserObj = authUser?.data || authUser;
   const myInviteCode = currentUserObj?.inviteCode || currentUserObj?._id || "MH-USER";
+  const inviteLink = `${window.location.origin}/invite?code=${myInviteCode}`;
 
   useEffect(() => {
     if (isOpen) {
@@ -43,9 +45,32 @@ function InviteFriendModal({ isOpen, onClose }) {
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(myInviteCode);
-    setCopied(true);
+    setCopiedCode(true);
     toast.success("Invite code copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopiedLink(true);
+    toast.success("Invite link copied to clipboard!");
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleShareLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Join me on MessageHub",
+          text: `Connect with me on MessageHub!`,
+          url: inviteLink,
+        });
+      } catch (err) {
+        handleCopyLink();
+      }
+    } else {
+      handleCopyLink();
+    }
   };
 
   const handleConnectByCode = (e) => {
@@ -83,24 +108,40 @@ function InviteFriendModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* My Unique Invite Code Card */}
-        <div className="p-4 bg-gradient-to-r from-primary/10 via-purple-500/10 to-primary/5 border-b border-base-300 flex items-center justify-between gap-3">
-          <div>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-base-content/60 flex items-center gap-1">
-              <QrCode className="size-3 text-primary" /> Your Unique Invite Code
+        {/* Shareable Invite Link Card */}
+        <div className="p-4 bg-gradient-to-r from-primary/15 via-purple-500/10 to-primary/5 border-b border-base-300 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider font-bold text-primary flex items-center gap-1">
+              <Link className="size-3.5" /> Shareable Invite Link
             </span>
-            <div className="text-base font-mono font-bold text-primary tracking-widest mt-0.5">
-              {myInviteCode}
-            </div>
+            <span className="text-[10px] font-mono text-base-content/50">
+              Code: <strong className="text-primary">{myInviteCode}</strong>
+            </span>
           </div>
 
-          <button
-            onClick={handleCopyCode}
-            className="btn btn-sm btn-primary gap-1.5 shadow-sm rounded-xl"
-          >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-            <span className="text-xs">{copied ? "Copied!" : "Copy Code"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={inviteLink}
+              className="flex-1 input input-xs bg-base-200 text-[11px] font-mono text-base-content/80 select-all border border-base-300 rounded-xl"
+            />
+            <button
+              onClick={handleCopyLink}
+              className="btn btn-xs btn-primary gap-1 shadow-sm rounded-xl"
+              title="Copy shareable link"
+            >
+              {copiedLink ? <Check className="size-3" /> : <Link className="size-3" />}
+              <span className="text-[11px]">{copiedLink ? "Copied!" : "Copy Link"}</span>
+            </button>
+            <button
+              onClick={handleShareLink}
+              className="btn btn-xs btn-outline btn-primary p-1.5 shadow-sm rounded-xl"
+              title="Share link"
+            >
+              <Share2 className="size-3" />
+            </button>
+          </div>
         </div>
 
         {/* Tab switcher */}

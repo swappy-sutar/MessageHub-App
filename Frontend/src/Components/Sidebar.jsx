@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useFriendStore } from "../store/useFriendStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users, Search, UserPlus } from "lucide-react";
+import { Users, Search, UserPlus, Plus, X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../utils/formatMessageTime.js";
 import avatar from "../assets/avatar.png";
@@ -29,21 +29,28 @@ function Sidebar() {
     }
   }, [socket, initInviteListeners]);
 
+  const isUserOnline = (userId) => {
+    if (!userId || !onlineUsers) return false;
+    return onlineUsers.some((id) => String(id) === String(userId));
+  };
+
   const filteredUsers = users
-    .filter((user) => (showOnlineOnly ? onlineUsers.includes(user._id) : true))
+    .filter((user) => (showOnlineOnly ? isUserOnline(user._id) : true))
     .filter((user) => {
       if (!searchQuery) return true;
       const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
       return fullName.includes(searchQuery.toLowerCase());
     });
 
+  const onlineCount = users.filter((u) => isUserOnline(u._id)).length;
+
   if (isUsersLoading) return <SidebarSkeleton />;
 
   return (
-    <aside className="h-full w-full flex flex-col border-r border-base-300 bg-base-100 transition-colors duration-300">
+    <aside className="h-full w-full flex flex-col border-r border-base-300 bg-base-100 transition-colors duration-300 relative">
       {/* Header */}
-      <div className="p-4 border-b border-base-300">
-        <div className="flex items-center justify-between mb-3">
+      <div className="p-3 sm:p-4 border-b border-base-300">
+        <div className="hidden sm:flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Users className="size-4 text-primary" />
@@ -53,10 +60,10 @@ function Sidebar() {
             </span>
           </div>
 
-          {/* Invite Friend Action Button */}
+          {/* Desktop/Laptop Top Invite Action Button */}
           <button
             onClick={() => setIsInviteModalOpen(true)}
-            className="btn btn-xs btn-primary gap-1 shadow-sm rounded-lg"
+            className="hidden sm:flex btn btn-xs btn-primary gap-1 shadow-sm rounded-lg"
             title="Invite new friend"
           >
             <UserPlus className="size-3" />
@@ -69,9 +76,12 @@ function Sidebar() {
           </button>
         </div>
 
-        {/* WhatsApp Style Search bar */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-base-content/40" />
+        {/* Modern WhatsApp & iOS Styled Search Bar */}
+        <div className="relative mb-3 group">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-base-content/40">
+            <Search className="size-4 transition-transform group-focus-within:scale-110" />
+          </div>
+
           <input
             type="text"
             name="no-sidebar-search-history"
@@ -81,25 +91,42 @@ function Sidebar() {
             spellCheck="false"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Ask AI or Search contacts..."
-            className="w-full pl-9 pr-3 py-2 input input-bordered input-sm bg-base-200/80 text-xs text-base-content focus:input-primary rounded-2xl"
+            placeholder="Search contacts or chat history..."
+            className="w-full pl-9 pr-8 py-2 bg-base-200/70 hover:bg-base-200 text-xs text-base-content placeholder:text-base-content/40 border border-base-300/50 focus:border-primary/60 focus:bg-base-100 rounded-full focus:ring-2 focus:ring-primary/15 focus:outline-none shadow-inner transition-all duration-200 font-medium"
           />
+
+          {/* Clear Search Input Button */}
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-base-content/40 hover:text-base-content hover:bg-base-300/80 transition-all cursor-pointer"
+              title="Clear search"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Online filter */}
-        <div className="flex items-center justify-between">
-          <label className="cursor-pointer flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={showOnlineOnly}
-              onChange={(e) => setShowOnlineOnly(e.target.checked)}
-              className="checkbox checkbox-xs checkbox-primary"
-            />
-            <span className="text-xs text-base-content/70">Online only</span>
-          </label>
-          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-success/10 text-success border border-success/20">
-            {Math.max(0, onlineUsers.length - 1)} online
-          </span>
+        {/* Online Filter & Status Pill Badges */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <button
+            type="button"
+            onClick={() => setShowOnlineOnly(!showOnlineOnly)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 select-none cursor-pointer ${
+              showOnlineOnly
+                ? "bg-primary/15 text-primary border-primary/30 shadow-sm"
+                : "bg-base-200/50 text-base-content/60 border-base-300/40 hover:bg-base-200 hover:text-base-content"
+            }`}
+          >
+            <span className={`size-2 rounded-full ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
+            <span>Online only</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
+            <span className="size-1.5 rounded-full bg-success animate-ping" />
+            <span>{onlineCount} online</span>
+          </div>
         </div>
       </div>
 
@@ -107,7 +134,7 @@ function Sidebar() {
       <div className="overflow-y-auto flex-1 py-2">
         {filteredUsers.map((user) => {
           const isSelected = selectedUser?._id === user._id;
-          const isOnline = onlineUsers.includes(user._id);
+          const isOnline = isUserOnline(user._id);
           const unreadCount = unreadCounts[user._id] || unreadCounts[String(user._id)] || 0;
 
           return (
@@ -189,6 +216,21 @@ function Sidebar() {
           </div>
         )}
       </div>
+
+      {/* Mobile Floating Action Button (FAB) in Bottom Right Corner */}
+      <button
+        onClick={() => setIsInviteModalOpen(true)}
+        className="sm:hidden absolute bottom-5 right-5 z-20 size-12 rounded-full bg-primary text-primary-content flex items-center justify-center shadow-lg hover:brightness-110 hover:scale-105 active:scale-95 transition-all group cursor-pointer border-none"
+        title="Invite new friend"
+      >
+        <Plus className="size-6 transition-transform group-hover:rotate-90 duration-300" />
+        
+        {receivedInvites.length > 0 && (
+          <span className="absolute -top-1 -right-1 size-5 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center border-2 border-base-100 shadow-md">
+            {receivedInvites.length}
+          </span>
+        )}
+      </button>
 
       {/* Invite Friend Modal */}
       <InviteFriendModal

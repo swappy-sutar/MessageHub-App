@@ -14,6 +14,8 @@ import { useCallStore } from "./store/useCallStore";
 import { useChatStore } from "./store/useChatStore";
 import { Loader } from "lucide-react";
 
+import InviteLinkHandler from "./Components/InviteLinkHandler";
+
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
   const { theme } = useThemeStore();
@@ -43,12 +45,17 @@ function App() {
   return (
     <div data-theme={theme} className="min-h-screen w-full bg-base-100">
       <Navbar />
+      <InviteLinkHandler />
 
       <main>
         <Routes>
           <Route
             path="/"
             element={authUser ? <HomePage /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/invite"
+            element={authUser ? <HomePage /> : <Navigate to="/signup" />}
           />
           <Route
             path="/signup"

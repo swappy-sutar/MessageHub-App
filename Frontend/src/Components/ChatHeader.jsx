@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { X, Phone, Video, ArrowLeft, MoreVertical, BellOff } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { X, Phone, Video, ArrowLeft, MoreVertical, BellOff, ChevronDown } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { useCallStore } from "../store/useCallStore";
@@ -13,9 +13,34 @@ const ChatHeader = () => {
   const { startCall } = useCallStore();
 
   const [showMenu, setShowMenu] = useState(false);
+  const [showCallDropdown, setShowCallDropdown] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
-  const isOnline = onlineUsers.includes(selectedUser?._id);
+  const callDropdownRef = useRef(null);
+
+  // Close call dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        callDropdownRef.current &&
+        !callDropdownRef.current.contains(event.target)
+      ) {
+        setShowCallDropdown(false);
+      }
+    };
+
+    if (showCallDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showCallDropdown]);
+
+  const isOnline = Boolean(
+    selectedUser?._id &&
+      onlineUsers.some((id) => String(id) === String(selectedUser._id))
+  );
   const isTyping = typingUsers[selectedUser?._id];
 
   const handleToggleMute = () => {
@@ -29,7 +54,7 @@ const ChatHeader = () => {
   };
 
   return (
-    <div className="p-3 px-4 border-b border-base-300 bg-base-100/50 backdrop-blur-md flex items-center justify-between flex-shrink-0 transition-colors duration-300 relative z-30">
+    <div className="p-3 px-4 border-b border-base-300 bg-base-100 flex items-center justify-between flex-shrink-0 transition-colors duration-300 relative z-30">
       {/* Left: Back Button + Avatar + Info */}
       <div className="flex items-center gap-2.5">
         <button
@@ -78,43 +103,76 @@ const ChatHeader = () => {
         </div>
       </div>
 
-      {/* Right: Action buttons (Video Call, Voice Call, 3-Dots Menu) */}
-      <div className="flex items-center gap-1">
-        {/* Video Call */}
-        <button
-          onClick={() => startCall(selectedUser, "video")}
-          className="btn btn-sm btn-ghost btn-circle text-base-content/70 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Video Call"
-        >
-          <Video className="size-4" />
-        </button>
+      {/* Right: Action buttons (Call Dropdown Pill, 3-Dots Menu, Red X) */}
+      <div className="flex items-center gap-2">
+        {/* WhatsApp Call Dropdown Pill Button */}
+        <div className="relative" ref={callDropdownRef}>
+          <button
+            onClick={() => setShowCallDropdown((prev) => !prev)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-base-200/80 hover:bg-base-300 border border-base-300/50 text-base-content/80 hover:text-base-content transition-all cursor-pointer group shadow-sm"
+            title="Video call options"
+          >
+            <Video className="size-5 group-hover:text-primary transition-colors" />
+            <ChevronDown className="size-4 text-base-content/60 group-hover:text-base-content transition-transform duration-200" />
+          </button>
 
-        {/* Voice Call */}
-        <button
-          onClick={() => startCall(selectedUser, "audio")}
-          className="btn btn-sm btn-ghost btn-circle text-base-content/70 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="Voice Call"
-        >
-          <Phone className="size-4" />
-        </button>
+          {/* Call Options Tooltip Popover */}
+          {showCallDropdown && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-base-100 border border-base-300 rounded-2xl shadow-xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <button
+                onClick={() => {
+                  setShowCallDropdown(false);
+                  startCall(selectedUser, "video");
+                }}
+                className="w-full px-4 py-2.5 flex items-center gap-3 text-xs font-semibold text-base-content hover:bg-base-200 transition-colors"
+              >
+                <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Video className="size-4" />
+                </div>
+                <div className="text-left">
+                  <div>Video Call</div>
+                  <div className="text-[10px] text-base-content/50 font-normal">HD video call</div>
+                </div>
+              </button>
 
-        {/* WhatsApp 3-Dots Menu Trigger */}
-        <button
-          onClick={() => setShowMenu((prev) => !prev)}
-          className="btn btn-sm btn-ghost btn-circle text-base-content/70 hover:text-primary hover:bg-primary/10 transition-colors"
-          title="More options"
-        >
-          <MoreVertical className="size-4" />
-        </button>
+              <button
+                onClick={() => {
+                  setShowCallDropdown(false);
+                  startCall(selectedUser, "audio");
+                }}
+                className="w-full px-4 py-2.5 flex items-center gap-3 text-xs font-semibold text-base-content hover:bg-base-200 transition-colors"
+              >
+                <div className="size-8 rounded-full bg-success/10 flex items-center justify-center text-success">
+                  <Phone className="size-4" />
+                </div>
+                <div className="text-left">
+                  <div>Voice Call</div>
+                  <div className="text-[10px] text-base-content/50 font-normal">Clear audio call</div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
 
-        {/* Close Chat (Desktop) */}
-        <button
-          onClick={() => setSelectedUser(null)}
-          className="hidden lg:flex btn btn-sm btn-ghost btn-circle text-error/70 hover:text-error hover:bg-error/10 transition-colors"
-          title="Close Chat"
-        >
-          <X className="size-4" />
-        </button>
+        {/* 3-Dots Menu Trigger with Tooltip */}
+        <div className="tooltip tooltip-bottom" data-tip="More options">
+          <button
+            onClick={() => setShowMenu((prev) => !prev)}
+            className="btn btn-md btn-ghost btn-circle text-base-content/70 hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <MoreVertical className="size-5" />
+          </button>
+        </div>
+
+        {/* Close Chat Button with Red X Icon and Tooltip */}
+        <div className="tooltip tooltip-bottom hidden lg:block" data-tip="Close chat">
+          <button
+            onClick={() => setSelectedUser(null)}
+            className="btn btn-md btn-ghost btn-circle hover:bg-red-500/10 transition-colors"
+          >
+            <X className="size-5 text-red-500 hover:text-red-600" />
+          </button>
+        </div>
       </div>
 
       {/* WhatsApp 3-Dots Dropdown Popover */}

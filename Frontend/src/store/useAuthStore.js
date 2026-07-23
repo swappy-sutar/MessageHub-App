@@ -231,7 +231,10 @@ const useAuthStore = create((set, get) => ({
     const socket = io(targetUrl, {
       withCredentials: true,
       auth: {
-        userId: userId,
+        userId: String(userId),
+      },
+      query: {
+        userId: String(userId),
       },
     });
 
@@ -243,7 +246,8 @@ const useAuthStore = create((set, get) => ({
     });
 
     socket.on("getOnlineUsers", (userIds) => {
-      set({ onlineUsers: userIds });
+      const stringUserIds = Array.isArray(userIds) ? userIds.map((id) => String(id)) : [];
+      set({ onlineUsers: stringUserIds });
     });
 
     socket.on("connect_error", (err) => {

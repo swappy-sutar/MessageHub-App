@@ -16,6 +16,7 @@ import {
 import toast from "react-hot-toast";
 import EmojiPickerSheet from "./EmojiPickerSheet";
 import CameraCaptureModal from "./CameraCaptureModal";
+import { extractFirstUrl, getLinkPreviewData } from "../utils/linkPreview.js";
 
 const MessageInput = () => {
   const [text, setText] = useState("");
@@ -24,6 +25,10 @@ const MessageInput = () => {
   const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
+  const [isLinkPreviewDismissed, setIsLinkPreviewDismissed] = useState(false);
+
+  const detectedUrl = extractFirstUrl(text);
+  const detectedUrlData = detectedUrl ? getLinkPreviewData(detectedUrl) : null;
 
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -176,6 +181,31 @@ const MessageInput = () => {
         ref={cameraInputRef}
         onChange={handleImageChange}
       />
+
+      {/* WhatsApp Style Link Preview Draft Banner (Screenshot 1) */}
+      {detectedUrlData && !isLinkPreviewDismissed && (
+        <div className="mb-2 p-3 bg-base-200 border border-base-300 rounded-2xl flex items-center justify-between shadow-md animate-fade-in text-xs">
+          <div className="flex flex-col gap-0.5 min-w-0 pr-3">
+            <span className="font-bold text-base-content truncate">
+              {detectedUrlData.domain}
+            </span>
+            <span className="text-base-content/70 truncate text-[11px]">
+              {detectedUrlData.url}
+            </span>
+            <span className="text-base-content/50 truncate text-[10px]">
+              {detectedUrlData.domain}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsLinkPreviewDismissed(true)}
+            className="p-1.5 rounded-full text-base-content/60 hover:text-base-content hover:bg-base-300 transition-colors flex-shrink-0 cursor-pointer"
+            title="Dismiss link preview"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
 
       {/* WhatsApp Style Reply Banner Preview */}
       {replyingTo && (

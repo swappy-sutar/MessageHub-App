@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Camera, X, Send, RotateCcw, Trash2, SwitchCamera, Sparkles } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
+import avatar from "../assets/avatar.png";
 import toast from "react-hot-toast";
 
 const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
@@ -141,126 +142,146 @@ const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-lg bg-base-100 border border-base-300 rounded-3xl shadow-2xl overflow-hidden flex flex-col relative transition-all duration-300">
-        {/* Header */}
-        <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200/50">
-          <div className="flex items-center gap-2">
-            <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
-              <Camera className="size-4 text-primary" />
-            </div>
-            <span className="font-bold text-sm text-base-content">
-              {capturedImage ? "Photo Preview" : "Take Photo"}
+    <div className="fixed inset-0 lg:left-80 lg:top-14 z-40 bg-[#0b141a] flex flex-col select-none overflow-hidden animate-fade-in border-l border-white/10">
+      {/* Top Header Bar */}
+      <div className="bg-[#111b21] border-b border-white/10 flex flex-col flex-shrink-0 z-20 text-white">
+        {/* Selected Contact Bar (if active chat thread) */}
+        {selectedUser && (
+          <div className="px-4 sm:px-6 py-2.5 bg-[#182229] border-b border-white/5 flex items-center gap-3">
+            <img
+              src={selectedUser.profilePic || avatar}
+              alt={selectedUser.firstName}
+              className="size-8 object-cover rounded-full border border-white/10"
+            />
+            <span className="font-semibold text-sm text-white flex items-center gap-1.5">
+              {selectedUser.firstName} {selectedUser.lastName}
+            </span>
+          </div>
+        )}
+
+        {/* Take Photo Action Header Row */}
+        <div className="h-12 px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+              title="Close camera"
+            >
+              <X className="size-5" />
+            </button>
+            <span className="font-semibold text-sm sm:text-base text-white tracking-wide">
+              {capturedImage ? "Photo Preview" : "Take photo"}
             </span>
           </div>
 
-          <button
-            onClick={handleClose}
-            className="p-1.5 rounded-full hover:bg-base-300 text-base-content/70 hover:text-base-content transition-colors"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        {/* Camera Viewport / Captured Preview */}
-        <div className="relative w-full aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
-          {capturedImage ? (
-            <img
-              src={capturedImage}
-              alt="Captured"
-              className="w-full h-full object-cover animate-fade-in"
-            />
-          ) : (
-            <>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className={`w-full h-full object-cover ${facingMode === "user" ? "scale-x-[-1]" : ""}`}
-              />
-
-              {isCameraLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white gap-2">
-                  <span className="loading loading-spinner loading-md text-primary" />
-                  <span className="text-xs">Initializing camera...</span>
-                </div>
-              )}
-
-              {/* Camera Flip Button */}
-              <button
-                onClick={toggleFacingMode}
-                className="absolute top-4 right-4 p-2.5 rounded-full bg-black/50 text-white hover:bg-black/70 backdrop-blur-md transition-colors"
-                title="Switch camera"
-              >
-                <RotateCcw className="size-5" />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Footer Actions: Send / Discard Options */}
-        <div className="p-5 bg-base-100 flex flex-col gap-4">
-          {capturedImage ? (
-            <>
-              {/* Recipient Selection Dropdown if no chat thread is currently active */}
-              {!selectedUser && (
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs font-semibold text-base-content/70">
-                      SELECT RECIPIENT CONTACT
-                    </span>
-                  </label>
-                  <select
-                    value={selectedRecipientId}
-                    onChange={(e) => setSelectedRecipientId(e.target.value)}
-                    className="select select-bordered select-sm w-full rounded-xl bg-base-200 text-xs text-base-content"
-                  >
-                    <option value="">-- Choose a contact --</option>
-                    {users.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.firstName} {u.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Action Buttons: Discard / Retake vs Send */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleDiscardPhoto}
-                  className="flex-1 btn btn-outline btn-error rounded-2xl gap-2 text-sm font-semibold"
-                >
-                  <Trash2 className="size-4" /> Discard
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSendPhoto}
-                  className="flex-1 btn btn-success text-white rounded-2xl gap-2 shadow-lg hover:scale-[1.02] transition-transform text-sm font-bold"
-                >
-                  <Send className="size-4" /> Send Photo
-                </button>
-              </div>
-            </>
-          ) : (
-            /* Snap Shutter Button */
-            <div className="flex items-center justify-center py-2">
-              <button
-                type="button"
-                onClick={handleCapturePhoto}
-                className="size-16 rounded-full bg-white border-4 border-primary shadow-xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center group"
-                title="Snap Photo"
-              >
-                <div className="size-12 rounded-full bg-primary group-hover:bg-primary-focus transition-colors flex items-center justify-center text-white">
-                  <Camera className="size-6" />
-                </div>
-              </button>
-            </div>
+          {!capturedImage && (
+            <button
+              type="button"
+              onClick={toggleFacingMode}
+              className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors cursor-pointer"
+              title="Switch camera"
+            >
+              <SwitchCamera className="size-5" />
+            </button>
           )}
         </div>
       </div>
+
+      {/* Main Camera Viewport / Captured Preview Area */}
+      <div className="flex-1 relative w-full h-full bg-black flex items-center justify-center overflow-hidden">
+        {capturedImage ? (
+          <img
+            src={capturedImage}
+            alt="Captured preview"
+            className="w-full h-full object-cover animate-fade-in"
+          />
+        ) : (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className={`w-full h-full object-cover ${
+                facingMode === "user" ? "scale-x-[-1]" : ""
+              }`}
+            />
+
+            {isCameraLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-white gap-3 z-10">
+                <span className="loading loading-spinner loading-lg text-emerald-500" />
+                <span className="text-sm font-medium tracking-wide text-white/80">
+                  Initializing camera...
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Bottom Control Bar */}
+      {capturedImage ? (
+        <div className="p-4 sm:p-6 bg-[#111b21] border-t border-white/10 flex flex-col gap-4 flex-shrink-0 z-20">
+          {/* Recipient Selection Dropdown if no active chat */}
+          {!selectedUser && (
+            <div className="max-w-md mx-auto w-full">
+              <label className="block text-xs font-semibold text-white/70 mb-1">
+                SELECT RECIPIENT CONTACT
+              </label>
+              <select
+                value={selectedRecipientId}
+                onChange={(e) => setSelectedRecipientId(e.target.value)}
+                className="select select-bordered select-sm w-full rounded-xl bg-white/10 text-white text-xs border-white/20 focus:border-emerald-500"
+              >
+                <option value="" className="bg-neutral-900 text-white">
+                  -- Choose a contact --
+                </option>
+                {users.map((u) => (
+                  <option key={u._id} value={u._id} className="bg-neutral-900 text-white">
+                    {u.firstName} {u.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Action Buttons: Retake / Discard vs Send */}
+          <div className="max-w-md mx-auto w-full flex items-center gap-4">
+            <button
+              type="button"
+              onClick={handleDiscardPhoto}
+              className="flex-1 btn btn-outline border-white/20 text-white hover:bg-error hover:border-error rounded-2xl gap-2 text-sm font-semibold"
+            >
+              <Trash2 className="size-4" /> Retake
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSendPhoto}
+              className="flex-1 btn bg-[#00a884] hover:bg-[#008f70] text-white border-none rounded-2xl gap-2 shadow-lg text-sm font-bold"
+            >
+              <Send className="size-4" /> Send Photo
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="py-4 bg-[#111b21] border-t border-white/10 flex flex-col items-center justify-center gap-2.5 flex-shrink-0 z-20 px-4">
+          {/* Center Large Green Camera Shutter Button */}
+          <button
+            type="button"
+            onClick={handleCapturePhoto}
+            className="size-14 sm:size-16 rounded-full bg-[#00a884] hover:bg-[#008f70] text-white flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer ring-4 ring-[#00a884]/30"
+            title="Take Photo"
+          >
+            <Camera className="size-7 sm:size-8 text-white" />
+          </button>
+
+          {/* Mode Indicator Tag */}
+          <div className="px-3.5 py-1 rounded-full bg-white/10 text-white/80 text-[11px] font-semibold tracking-wide shadow-sm">
+            Photo
+          </div>
+        </div>
+      )}
     </div>
   );
 };

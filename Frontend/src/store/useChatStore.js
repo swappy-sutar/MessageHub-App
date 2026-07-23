@@ -18,8 +18,6 @@ const LEGACY_KEYS = [
 const decryptMessageText = (ciphertext) => {
   if (!ciphertext) return "";
   if (typeof ciphertext !== "string") return ciphertext;
-
-  // If text is not AES-encrypted (does not start with U2FsdGVkX1), return plain text directly
   if (!ciphertext.startsWith("U2FsdGVkX1")) {
     return ciphertext;
   }
@@ -32,9 +30,7 @@ const decryptMessageText = (ciphertext) => {
       if (decryptedText) {
         return decryptedText;
       }
-    } catch (error) {
-      // try next fallback key
-    }
+    } catch (error) {}
   }
 
   return ciphertext;
@@ -46,11 +42,43 @@ export const useChatStore = create((set, get) => ({
   selectedUser: null,
   isUserLoading: false,
   isMessagesLoading: false,
-  unreadCounts: {},
-  replyingTo: null,
-  typingUsers: {}, // { [userIdString]: boolean }
-  isContactInfoOpen: false,
-  isSearchOpen: false,
+  lastSeenSeqMap: {}, // { [conversationId]: number }
+
+  syncDeltaMessages: async (conversationId) => {
+    const lastSeq = get().lastSeenSeqMap[conversationId] || 0;
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.get(`/messages/sync?conversationId=${conversationId}&lastSequenceId=${lastSeq}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      const newMsgs = (res.data.data || []).map((msg) => ({
+        ...msg,
+        text: decryptMessageText(msg.text),
+      }));
+
+      if (newMsgs.length > 0) {
+        const maxSeq = Math.max(...newMsgs.map((m) => m.sequenceId || 0));
+        set((state) => ({
+          messages: [...state.messages, ...newMsgs],
+          lastSeenSeqMap: { ...state.lastSeenSeqMap, [conversationId]: maxSeq },
+        }));
+      }
+    } catch (error) {
+      console.warn("Delta sync failed:", error);
+    }
+  },
+
+  setSettingsOpen: (isOpen) =>
+    set({ isSettingsOpen: isOpen, isSearchOpen: false, isContactInfoOpen: false }),
+
+  toggleSettings: () =>
+    set((state) => ({
+      isSettingsOpen: !state.isSettingsOpen,
+      isSearchOpen: false,
+      isContactInfoOpen: false,
+    })),
 
   setSearchOpen: (isOpen) =>
     set({ isSearchOpen: isOpen, isContactInfoOpen: isOpen ? false : get().isContactInfoOpen }),
@@ -71,6 +99,7 @@ export const useChatStore = create((set, get) => ({
     })),
 
   setReplyingTo: (message) => set({ replyingTo: message }),
+  setEditingMessage: (message) => set({ editingMessage: message }),
 
   getUsers: async () => {
     set({ isUserLoading: true });
@@ -105,6 +134,7 @@ export const useChatStore = create((set, get) => ({
       }));
 
       set({ messages: decryptedMessages });
+      get().getPinnedMessages(userId);
 
       const socket = useAuthStore.getState().socket;
       if (socket && socket.connected) {
@@ -122,6 +152,8 @@ export const useChatStore = create((set, get) => ({
     set({
       selectedUser,
       replyingTo: null,
+      editingMessage: null,
+      searchResults: [],
       isContactInfoOpen: false,
       isSearchOpen: false,
     });
@@ -148,11 +180,13 @@ export const useChatStore = create((set, get) => ({
     if (replyingTo) {
       const authUser = useAuthStore.getState().authUser;
       const senderName = authUser?.data?.firstName || authUser?.firstName || "You";
-      
+
       const replyPayload = {
         messageId: replyingTo._id,
         text: replyingTo.text || "",
         image: replyingTo.image || "",
+        video: replyingTo.video || "",
+        documentName: replyingTo.document?.name || "",
         senderName: senderName,
       };
 
@@ -175,11 +209,18 @@ export const useChatStore = create((set, get) => ({
       const newMsg = res.data.data;
       newMsg.text = decryptMessageText(newMsg.text);
 
+      let msgPreview = newMsg.text;
+      if (!msgPreview) {
+        if (newMsg.image) msgPreview = "📷 Photo";
+        else if (newMsg.video) msgPreview = "🎥 Video";
+        else if (newMsg.document) msgPreview = `📄 ${newMsg.document.name || "Document"}`;
+      }
+
       const updatedUsers = users.map((u) =>
         String(u._id) === String(selectedUser._id)
           ? {
               ...u,
-              lastMessageText: newMsg.text || "📷 Photo",
+              lastMessageText: msgPreview,
               lastMessageTime: newMsg.createdAt,
             }
           : u
@@ -195,6 +236,133 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
       throw error;
+    }
+  },
+
+  editMessage: async (messageId, newText) => {
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.put(
+        `/messages/edit/${messageId}`,
+        { text: newText },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId
+            ? { ...m, text: newText, isEdited: true, editedAt: new Date() }
+            : m
+        ),
+        editingMessage: null,
+      }));
+
+      toast.success("Message edited");
+      return res.data;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to edit message");
+      throw error;
+    }
+  },
+
+  addReaction: async (messageId, emoji) => {
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.post(
+        `/messages/reaction/${messageId}`,
+        { emoji },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId ? { ...m, reactions: res.data.data } : m
+        ),
+      }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to add reaction");
+    }
+  },
+
+  pinMessage: async (messageId) => {
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.post(
+        `/messages/pin/${messageId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+        }
+      );
+
+      const updatedMsg = res.data.data;
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId
+            ? { ...m, pinnedAt: updatedMsg.pinnedAt, pinnedBy: updatedMsg.pinnedBy }
+            : m
+        ),
+      }));
+
+      const selectedUser = get().selectedUser;
+      if (selectedUser) get().getPinnedMessages(selectedUser._id);
+
+      toast.success(updatedMsg.pinnedAt ? "Message pinned 📌" : "Message unpinned");
+    } catch (error) {
+      toast.error("Failed to pin/unpin message");
+    }
+  },
+
+  getPinnedMessages: async (userId) => {
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.get(`/messages/pinned/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      const decrypted = (res.data.data || []).map((m) => ({
+        ...m,
+        text: decryptMessageText(m.text),
+      }));
+
+      set({ pinnedMessages: decrypted });
+    } catch (error) {
+      console.error("Error fetching pinned messages:", error);
+    }
+  },
+
+  searchMessages: async (query) => {
+    const selectedUser = get().selectedUser;
+    if (!selectedUser || !query.trim()) {
+      set({ searchResults: [], isSearching: false });
+      return;
+    }
+
+    set({ isSearching: true });
+    const token = Cookies.get("token");
+    try {
+      const res = await axiosInstance.get(`/messages/search/${selectedUser._id}?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+
+      const decrypted = (res.data.data || []).map((m) => ({
+        ...m,
+        text: decryptMessageText(m.text),
+      }));
+
+      set({ searchResults: decrypted, isSearching: false });
+    } catch (error) {
+      set({ isSearching: false });
+      toast.error("Search failed");
     }
   },
 
@@ -252,7 +420,7 @@ export const useChatStore = create((set, get) => ({
         set((state) => ({
           messages: state.messages.map((m) =>
             m._id === messageId
-              ? { ...m, text: "", image: "", deletedForEveryone: true }
+              ? { ...m, text: "", image: "", video: "", document: null, deletedForEveryone: true }
               : m
           ),
         }));
@@ -275,6 +443,10 @@ export const useChatStore = create((set, get) => ({
 
     socket.off("newMessage");
     socket.off("messagesRead");
+    socket.off("messagesDelivered");
+    socket.off("messageEdited");
+    socket.off("reactionUpdated");
+    socket.off("messagePinned");
     socket.off("messageDeletedForEveryone");
     socket.off("userTyping");
     socket.off("userStoppedTyping");
@@ -288,7 +460,13 @@ export const useChatStore = create((set, get) => ({
         text: decryptMessageText(newMessage.text),
       };
 
-      const msgPreview = decryptedMsg.text || "📷 Photo";
+      let msgPreview = decryptedMsg.text;
+      if (!msgPreview) {
+        if (decryptedMsg.image) msgPreview = "📷 Photo";
+        else if (decryptedMsg.video) msgPreview = "🎥 Video";
+        else if (decryptedMsg.document) msgPreview = `📄 ${decryptedMsg.document.name || "Document"}`;
+      }
+
       const msgTime = decryptedMsg.createdAt;
 
       const updatedUsers = get().users.map((u) =>
@@ -303,18 +481,16 @@ export const useChatStore = create((set, get) => ({
 
       set({ users: updatedUsers });
 
-      // Play audio chime
       ringtone.playIncomingMessageTone();
 
       const senderUser = get().users.find((u) => String(u._id) === senderId);
       const senderName = senderUser ? `${senderUser.firstName} ${senderUser.lastName}` : "Someone";
       const senderAvatar = senderUser?.profilePic || "/avatar.png";
 
-      // Dispatch Native PC Desktop Push Notification if document is hidden or user is not focused on this chat
       if (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== senderId) {
         pushNotifications.sendDesktopNotification({
           title: `💬 Message from ${senderName}`,
-          body: decryptedMsg.text || "Sent a photo attachment 📷",
+          body: msgPreview || "Sent an attachment",
           icon: senderAvatar,
           tag: `msg-${senderId}`,
           onClick: () => {
@@ -337,7 +513,7 @@ export const useChatStore = create((set, get) => ({
           },
         }));
 
-        toast(`${senderName}: ${decryptedMsg.text || "Sent an attachment"}`, {
+        toast(`${senderName}: ${msgPreview}`, {
           duration: 4000,
           icon: "💬",
         });
@@ -352,16 +528,57 @@ export const useChatStore = create((set, get) => ({
             ...m,
             isRead: true,
             isDelivered: true,
+            status: "read",
           })),
         }));
       }
+    });
+
+    socket.on("messagesDelivered", ({ toUserId }) => {
+      const currentSelectedUser = get().selectedUser;
+      if (currentSelectedUser && String(currentSelectedUser._id) === String(toUserId)) {
+        set((state) => ({
+          messages: state.messages.map((m) => ({
+            ...m,
+            isDelivered: true,
+            status: m.isRead ? "read" : "delivered",
+          })),
+        }));
+      }
+    });
+
+    socket.on("messageEdited", ({ messageId, text }) => {
+      const decrypted = decryptMessageText(text);
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId ? { ...m, text: decrypted, isEdited: true } : m
+        ),
+      }));
+    });
+
+    socket.on("reactionUpdated", ({ messageId, reactions }) => {
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId ? { ...m, reactions } : m
+        ),
+      }));
+    });
+
+    socket.on("messagePinned", ({ messageId, pinnedAt, pinnedBy }) => {
+      set((state) => ({
+        messages: state.messages.map((m) =>
+          m._id === messageId ? { ...m, pinnedAt, pinnedBy } : m
+        ),
+      }));
+      const selectedUser = get().selectedUser;
+      if (selectedUser) get().getPinnedMessages(selectedUser._id);
     });
 
     socket.on("messageDeletedForEveryone", ({ messageId }) => {
       set((state) => ({
         messages: state.messages.map((m) =>
           m._id === messageId
-            ? { ...m, text: "", image: "", deletedForEveryone: true }
+            ? { ...m, text: "", image: "", video: "", document: null, deletedForEveryone: true }
             : m
         ),
       }));
@@ -385,6 +602,10 @@ export const useChatStore = create((set, get) => ({
     if (socket) {
       socket.off("newMessage");
       socket.off("messagesRead");
+      socket.off("messagesDelivered");
+      socket.off("messageEdited");
+      socket.off("reactionUpdated");
+      socket.off("messagePinned");
       socket.off("messageDeletedForEveryone");
       socket.off("userTyping");
       socket.off("userStoppedTyping");

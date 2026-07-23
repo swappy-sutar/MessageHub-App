@@ -36,6 +36,10 @@ const useAuthStore = create((set, get) => ({
   checkAuth: async () => {
     try {
       const token = Cookies.get("token");
+      if (!token) {
+        set({ authUser: null, isCheckingAuth: false });
+        return;
+      }
 
       const response = await axiosInstance.get("/auth/check-auth", {
         headers: {
@@ -48,7 +52,9 @@ const useAuthStore = create((set, get) => ({
       get().connectSocket();
       pushNotifications.requestPermission();
     } catch (error) {
-      console.error("Error checking CheckAuth:", error);
+      if (error?.code !== "ERR_NETWORK" && error?.response?.status !== 401) {
+        console.error("Error checking CheckAuth:", error);
+      }
       set({ authUser: null });
     } finally {
       set({ isCheckingAuth: false });

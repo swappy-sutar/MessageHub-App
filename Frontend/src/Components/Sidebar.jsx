@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useFriendStore } from "../store/useFriendStore";
+import { usePresenceStore } from "../store/usePresenceStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users, Search, UserPlus, Plus, X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../utils/formatMessageTime.js";
 import avatar from "../assets/avatar.png";
 import InviteFriendModal from "./InviteFriendModal";
+import CreateGroupModal from "./CreateGroupModal";
 
 function Sidebar() {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading, unreadCounts } =
     useChatStore();
-  const { onlineUsers, socket } = useAuthStore();
+  const { socket } = useAuthStore();
+  const { onlineUsers } = usePresenceStore();
   const { receivedInvites, getInvites, initInviteListeners } = useFriendStore();
 
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
 
   useEffect(() => {
     getUsers();
@@ -34,15 +38,17 @@ function Sidebar() {
     return onlineUsers.some((id) => String(id) === String(userId));
   };
 
-  const filteredUsers = users
+  const safeUsers = users || [];
+
+  const filteredUsers = safeUsers
     .filter((user) => (showOnlineOnly ? isUserOnline(user._id) : true))
     .filter((user) => {
       if (!searchQuery) return true;
-      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
       return fullName.includes(searchQuery.toLowerCase());
     });
 
-  const onlineCount = users.filter((u) => isUserOnline(u._id)).length;
+  const onlineCount = safeUsers.filter((u) => isUserOnline(u._id)).length;
 
   if (isUsersLoading) return <SidebarSkeleton />;
 
@@ -60,20 +66,30 @@ function Sidebar() {
             </span>
           </div>
 
-          {/* Desktop/Laptop Top Invite Action Button */}
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="hidden sm:flex btn btn-xs btn-primary gap-1 shadow-sm rounded-lg"
-            title="Invite new friend"
-          >
-            <UserPlus className="size-3" />
-            <span>Invite</span>
-            {receivedInvites.length > 0 && (
-              <span className="badge badge-error badge-xs font-mono text-[9px] text-white">
-                {receivedInvites.length}
-              </span>
-            )}
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsGroupModalOpen(true)}
+              className="hidden sm:flex btn btn-xs btn-outline btn-primary gap-1 rounded-lg"
+              title="Create new group"
+            >
+              <Plus className="size-3" />
+              <span>Group</span>
+            </button>
+            <button
+              onClick={() => setIsInviteModalOpen(true)}
+              className="hidden sm:flex btn btn-xs btn-primary gap-1 shadow-sm rounded-lg"
+              title="Invite new friend"
+            >
+              <UserPlus className="size-3" />
+              <span>Invite</span>
+              {(receivedInvites || []).length > 0 && (
+                <span className="badge badge-error badge-xs font-mono text-[9px] text-white">
+                  {receivedInvites.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Modern WhatsApp & iOS Styled Search Bar */}
@@ -135,7 +151,7 @@ function Sidebar() {
         {filteredUsers.map((user) => {
           const isSelected = selectedUser?._id === user._id;
           const isOnline = isUserOnline(user._id);
-          const unreadCount = unreadCounts[user._id] || unreadCounts[String(user._id)] || 0;
+          const unreadCount = unreadCounts?.[user._id] || unreadCounts?.[String(user._id)] || 0;
 
           return (
             <button
@@ -236,6 +252,12 @@ function Sidebar() {
       <InviteFriendModal
         isOpen={isInviteModalOpen}
         onClose={() => setIsInviteModalOpen(false)}
+      />
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
       />
     </aside>
   );

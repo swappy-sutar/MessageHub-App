@@ -1,15 +1,21 @@
 <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="mhDarkNavyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stopColor="#0a369d" />
-      <stop offset="50%" stopColor="#0048ba" />
+      <stop offset="0%" stopColor="#08309b" />
+      <stop offset="60%" stopColor="#0044b3" />
       <stop offset="100%" stopColor="#001858" />
     </linearGradient>
 
-    <linearGradient id="mhCyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="mhCyanWaveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stopColor="#00f2fe" />
-      <stop offset="40%" stopColor="#00c4cc" />
+      <stop offset="35%" stopColor="#00c4cc" />
+      <stop offset="75%" stopColor="#0096c7" />
       <stop offset="100%" stopColor="#0077b6" />
+    </linearGradient>
+
+    <linearGradient id="mhBubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#00f2fe" />
+      <stop offset="100%" stopColor="#00c4cc" />
     </linearGradient>
   </defs>
 
@@ -20,28 +26,31 @@
   <path
     fillRule="evenodd"
     clipRule="evenodd"
-    d="M 44 28 C 32 28 24 36 24 48 L 24 152 C 24 164 32 172 44 172 C 56 172 64 164 64 152 L 64 48 C 64 36 56 28 44 28 Z M 44 40 C 38 40 34 44 34 50 L 34 150 C 34 156 38 160 44 160 C 50 160 54 156 54 150 L 54 50 C 54 44 50 40 44 40 Z"
+    d="M 48 26 C 35 26 26 35 26 48 L 26 152 C 26 165 35 174 48 174 C 61 174 70 165 70 152 L 70 48 C 70 35 61 26 48 26 Z M 48 40 C 42 40 38 44 38 50 L 38 150 C 38 156 42 160 48 160 C 54 160 58 156 58 150 L 58 50 C 58 44 54 40 48 40 Z"
     fill="url(#mhDarkNavyGrad)"
   />
 
-  {/* RIGHT VERTICAL STEM */}
+  {/* RIGHT VERTICAL CAPSULE STEM */}
   <path
     fillRule="evenodd"
     clipRule="evenodd"
-    d="M 152 68 C 140 68 132 76 132 88 L 132 152 C 132 164 140 172 152 172 C 164 172 172 164 172 152 L 172 88 C 172 76 164 68 152 68 Z M 152 80 C 146 80 142 84 142 90 L 142 150 C 142 156 146 160 152 160 C 158 160 162 156 162 150 L 162 90 C 162 84 158 80 152 80 Z"
+    d="M 152 26 C 139 26 130 35 130 48 L 130 152 C 130 165 139 174 152 174 C 165 174 174 165 174 152 L 174 48 C 174 35 165 26 152 26 Z M 152 40 C 146 40 142 44 142 50 L 142 150 C 142 156 146 160 152 160 C 158 160 162 156 162 150 L 162 50 C 162 44 158 40 152 40 Z"
     fill="url(#mhDarkNavyGrad)"
   />
 
-  {/* FLOWING CYAN 'M' WAVE SWOOSH WITH SHARP TOP-RIGHT FLAME TIP */}
+  {/* CENTER FLOWING 'M' RIBBON WAVE */}
   <path
-    d="M 28 128 C 50 160 85 162 108 132 C 128 106 148 78 174 62 C 152 78 128 116 106 138 C 85 158 55 142 28 128 Z"
-    fill="url(#mhCyanGrad)"
+    d="M 48 102 C 64 80 78 126 100 124 C 120 122 134 88 156 72"
+    stroke="url(#mhCyanWaveGrad)"
+    strokeWidth="14"
+    strokeLinecap="round"
+    strokeLinejoin="round"
   />
 
   {/* TOP-RIGHT CHAT BUBBLE ICON */}
-  <g transform="translate(138, 42)">
-    <circle cx="0" cy="0" r="22" fill="url(#mhCyanGrad)" />
-    <path d="M -13 14 L -21 23 L -5 20 Z" fill="url(#mhCyanGrad)" />
-    <circle cx="0" cy="0" r="11" fill="#ffffff" />
+  <g transform="translate(142, 44)">
+    <circle cx="0" cy="0" r="17" fill="url(#mhBubbleGrad)" />
+    <path d="M -10 11 L -17 17 L -4 15 Z" fill="url(#mhBubbleGrad)" />
+    <circle cx="0" cy="0" r="8.5" fill="#ffffff" />
   </g>
 </svg>

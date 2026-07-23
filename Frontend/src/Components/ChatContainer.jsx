@@ -1,4 +1,5 @@
 import { useChatStore } from "../store/useChatStore";
+import { useThemeStore } from "../store/useThemeStore";
 import { useEffect, useRef, useState, useMemo, Fragment } from "react";
 
 import ChatHeader from "./ChatHeader";
@@ -9,11 +10,26 @@ import MessageContextMenu from "./MessageContextMenu";
 import MessageInfoModal from "./MessageInfoModal";
 import DeleteMessageModal from "./DeleteMessageModal";
 import MediaLightboxModal from "./MediaLightboxModal";
+import PinnedMessageBar from "./PinnedMessageBar";
 import { useAuthStore } from "../store/useAuthStore";
-import { formatMessageTime, formatMessageDate, isSameDay } from "../utils/formatMessageTime.js";
+import { formatMessageTime, formatMessageDate } from "../utils/formatMessageTime.js";
 import { extractFirstUrl, getLinkPreviewData } from "../utils/linkPreview.js";
 import avatar from "../assets/avatar.png";
-import { Phone, Video, PhoneMissed, Reply, CornerUpRight, Check, CheckCheck, MoreVertical, Ban } from "lucide-react";
+import whatsappBg from "../assets/whatsapp-bg.svg";
+import {
+  Phone,
+  Video as VideoIcon,
+  PhoneMissed,
+  Reply,
+  CornerUpRight,
+  Check,
+  CheckCheck,
+  Ban,
+  FileText,
+  Download,
+  Pin,
+  Clock,
+} from "lucide-react";
 
 /* Swipeable Message Item for Mobile Touch Gestures & Desktop Hover */
 function SwipeableMessageItem({
@@ -33,6 +49,8 @@ function SwipeableMessageItem({
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const touchStartRef = useRef({ x: 0, y: 0, isHorizontal: false });
+
+  const { addReaction } = useChatStore();
 
   const isMine = String(message.senderId) === String(currentUserId);
   const detectedUrl = extractFirstUrl(message.text);
@@ -64,15 +82,25 @@ function SwipeableMessageItem({
       return part;
     });
   };
+
   const isCallLog =
-    message.text &&
-    (message.text.startsWith("📹") || message.text.startsWith("📞"));
+    message.text && (message.text.startsWith("📹") || message.text.startsWith("📞"));
   const isMissed = message.text && message.text.includes("Missed");
   const isDeclined = message.text && message.text.includes("declined");
 
   const isImageOnly =
     message.image && !message.text && !message.replyTo && !message.isForwarded;
   const bubblePadding = isImageOnly ? "p-1" : "py-1.5 px-3 sm:py-2 sm:px-3.5";
+
+  // Group reactions by emoji
+  const reactionCounts = useMemo(() => {
+    if (!message.reactions || message.reactions.length === 0) return [];
+    const map = {};
+    message.reactions.forEach((r) => {
+      map[r.emoji] = (map[r.emoji] || 0) + 1;
+    });
+    return Object.entries(map).map(([emoji, count]) => ({ emoji, count }));
+  }, [message.reactions]);
 
   const handleTouchStart = (e) => {
     if (e.touches.length !== 1) return;
@@ -105,11 +133,9 @@ function SwipeableMessageItem({
 
   const handleTouchEnd = () => {
     if (swipeOffset < -40) {
-      // Swipe Left -> Forward Modal
       if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30);
       setForwardModalMessage(message);
     } else if (swipeOffset > 40) {
-      // Swipe Right -> Reply
       if (typeof window !== "undefined" && navigator.vibrate) navigator.vibrate(30);
       setReplyingTo(message);
     }
@@ -163,161 +189,210 @@ function SwipeableMessageItem({
         className={`flex items-center gap-1.5 ${isMine ? "flex-row-reverse" : "flex-row"} max-w-[85%] sm:max-w-[72%] md:max-w-[65%]`}
       >
         {/* Bubble Content */}
-        <div
-          onContextMenu={(e) => handleOpenContextMenu(e, message)}
-          className={`chat-bubble flex flex-col ${bubblePadding} rounded-2xl relative shadow-md w-fit max-w-full overflow-hidden select-none transition-all duration-300 ${
-            isHighlighted ? "whatsapp-bubble-highlight ring-2 ring-primary ring-offset-2 ring-offset-base-100" : ""
-          } ${
-            message.deletedForEveryone
-              ? "bg-base-200/60 text-base-content/60 border border-base-300 italic"
-              : isCallLog
-              ? isMissed || isDeclined
-                ? "bg-error/15 text-error border border-error/20"
-                : "bg-base-200 text-base-content border border-base-300"
-              : isMine
-              ? "bg-primary text-primary-content rounded-tr-none"
-              : "bg-base-200 text-base-content rounded-tl-none border border-base-300"
-          }`}
-        >
-          {/* Deleted for Everyone View */}
-          {message.deletedForEveryone ? (
-            <div className="flex items-center gap-2 text-xs py-1 text-base-content/60">
-              <Ban className="size-4 text-base-content/40" />
-              <span>This message was deleted</span>
-              <span className="text-[10px] font-mono ml-auto opacity-75">
-                {formatMessageTime(message.createdAt)}
-              </span>
-            </div>
-          ) : (
-            <>
-              {/* Forwarded Label Tag */}
-              {message.isForwarded && (
-                <div className="flex items-center gap-1 text-[10px] italic opacity-70 mb-1">
-                  <CornerUpRight className="size-3" /> Forwarded
-                </div>
-              )}
+        <div className="relative flex flex-col items-end">
+          <div
+            onContextMenu={(e) => handleOpenContextMenu(e, message)}
+            className={`chat-bubble flex flex-col ${bubblePadding} rounded-2xl relative shadow-md w-fit max-w-full overflow-hidden select-none transition-all duration-300 ${
+              isHighlighted ? "whatsapp-bubble-highlight ring-2 ring-primary ring-offset-2 ring-offset-base-100" : ""
+            } ${
+              message.deletedForEveryone
+                ? "bg-base-200/60 text-base-content/60 border border-base-300 italic"
+                : isCallLog
+                ? isMissed || isDeclined
+                  ? "bg-error/15 text-error border border-error/20"
+                  : "bg-base-200 text-base-content border border-base-300"
+                : isMine
+                ? "bg-primary text-primary-content rounded-tr-none"
+                : "bg-base-200 text-base-content rounded-tl-none border border-base-300"
+            }`}
+          >
+            {/* Pinned Badge */}
+            {message.pinnedAt && (
+              <div className="flex items-center gap-1 text-[10px] text-primary font-bold mb-1">
+                <Pin className="size-3 rotate-45" /> Pinned
+              </div>
+            )}
 
-              {/* Quoted Reply Embedded Card */}
-              {message.replyTo && (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const targetId = getReplyTargetId(message.replyTo);
-                    if (targetId) handleScrollToMessage(targetId);
-                  }}
-                  className={`mb-1.5 p-1.5 px-2.5 rounded-xl border-l-4 text-xs cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all select-none ${
-                    isMine
-                      ? "bg-black/20 border-primary-content/80 text-primary-content hover:bg-black/30"
-                      : "bg-base-300/80 border-primary text-base-content hover:bg-base-300"
-                  }`}
-                  title="Click to view original message"
-                >
-                  <span className="font-bold block text-[11px]">
-                    {message.replyTo.senderName || "Reply"}
-                  </span>
-                  <span className="opacity-90 truncate block">
-                    {message.replyTo.text || (message.replyTo.image ? "📷 Photo" : "Attachment")}
-                  </span>
-                </div>
-              )}
-
-              {/* Image Attachment View */}
-              {message.image && (
-                <div
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onOpenLightbox) onOpenLightbox(message);
-                  }}
-                  onContextMenu={(e) => handleOpenContextMenu(e, message)}
-                  className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] cursor-pointer group/img"
-                >
-                  <img
-                    src={message.image}
-                    alt="Attachment"
-                    className="w-full max-h-[300px] sm:max-h-[360px] object-cover rounded-xl transition-transform duration-200 group-hover/img:scale-[1.01]"
-                  />
-
-                  {/* Overlaid Time & Ticks */}
-                  <div className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] flex items-center gap-1 font-mono shadow-md">
-                    <span>{formatMessageTime(message.createdAt)}</span>
-                    {isMine && renderMessageTicks(message)}
+            {/* Deleted for Everyone View */}
+            {message.deletedForEveryone ? (
+              <div className="flex items-center gap-2 text-xs py-1 text-base-content/60">
+                <Ban className="size-4 text-base-content/40" />
+                <span>This message was deleted</span>
+                <span className="text-[10px] font-mono ml-auto opacity-75">
+                  {formatMessageTime(message.createdAt)}
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Forwarded Label */}
+                {message.isForwarded && (
+                  <div className="flex items-center gap-1 text-[10px] italic opacity-70 mb-1">
+                    <CornerUpRight className="size-3" /> Forwarded
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Rich Link Preview Card (WhatsApp Style) */}
-              {linkPreviewData && (
-                <a
-                  href={linkPreviewData.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className={`block mb-2 p-2.5 rounded-xl border-l-4 text-xs transition-colors select-text group/link ${
-                    isMine
-                      ? "bg-black/30 border-white/90 text-white hover:bg-black/40"
-                      : "bg-base-300/70 border-primary text-base-content hover:bg-base-300"
-                  }`}
-                >
+                {/* Quoted Reply Card */}
+                {message.replyTo && (
                   <div
-                    className={`font-bold text-sm leading-snug mb-1 group-hover/link:underline ${
-                      isMine ? "text-white drop-shadow-sm" : "text-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const targetId = getReplyTargetId(message.replyTo);
+                      if (targetId) handleScrollToMessage(targetId);
+                    }}
+                    className={`mb-1.5 p-1.5 px-2.5 rounded-xl border-l-4 text-xs cursor-pointer hover:brightness-110 active:scale-[0.98] transition-all select-none ${
+                      isMine
+                        ? "bg-black/20 border-primary-content/80 text-primary-content hover:bg-black/30"
+                        : "bg-base-300/80 border-primary text-base-content hover:bg-base-300"
                     }`}
+                    title="Click to view original message"
                   >
-                    {linkPreviewData.title}
-                  </div>
-                  <div
-                    className={`text-[11.5px] leading-relaxed mb-1 line-clamp-2 ${
-                      isMine ? "text-white/90" : "text-base-content/85"
-                    }`}
-                  >
-                    {linkPreviewData.description}
-                  </div>
-                  <div
-                    className={`text-[10px] font-mono ${
-                      isMine ? "text-white/70" : "text-base-content/60"
-                    }`}
-                  >
-                    {linkPreviewData.domain}
-                  </div>
-                </a>
-              )}
-
-              {/* Text Message Content & Inline Time/Ticks */}
-              {message.text && (
-                <div className="inline-flex items-end flex-wrap gap-x-2 gap-y-0.5 max-w-full">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    {isCallLog && (
-                      <div className="p-0.5 rounded-full bg-base-100/50 flex-shrink-0">
-                        {isMissed ? (
-                          <PhoneMissed className="size-3.5 text-error" />
-                        ) : message.text.startsWith("📹") ? (
-                          <Video className="size-3.5 text-primary" />
-                        ) : (
-                          <Phone className="size-3.5 text-success" />
-                        )}
-                      </div>
-                    )}
-                    <span className="text-[13.5px] sm:text-sm font-normal leading-snug break-words">
-                      {isCallLog
-                        ? message.text.replace(/^[^a-zA-Z0-9]+/, "").trim()
-                        : renderTextWithLinks(message.text)}
+                    <span className="font-bold block text-[11px]">
+                      {message.replyTo.senderName || "Reply"}
+                    </span>
+                    <span className="opacity-90 truncate block">
+                      {message.replyTo.text || (message.replyTo.image ? "📷 Photo" : message.replyTo.video ? "🎥 Video" : "Attachment")}
                     </span>
                   </div>
+                )}
 
-                  {/* Inline Timestamp and Status Ticks */}
-                  {!message.image && (
-                    <div className="inline-flex items-center gap-1 text-[10px] opacity-75 font-mono ml-auto whitespace-nowrap self-end pb-0.5 flex-shrink-0">
+                {/* Image Attachment */}
+                {message.image && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onOpenLightbox) onOpenLightbox(message);
+                    }}
+                    onContextMenu={(e) => handleOpenContextMenu(e, message)}
+                    className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] cursor-pointer group/img"
+                  >
+                    <img
+                      src={message.image}
+                      alt="Attachment"
+                      className="w-full max-h-[300px] sm:max-h-[360px] object-cover rounded-xl transition-transform duration-200 group-hover/img:scale-[1.01]"
+                    />
+                    <div className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] flex items-center gap-1 font-mono shadow-md">
                       <span>{formatMessageTime(message.createdAt)}</span>
                       {isMine && renderMessageTicks(message)}
                     </div>
-                  )}
-                </div>
-              )}
-            </>
+                  </div>
+                )}
+
+                {/* Video Attachment */}
+                {message.video && (
+                  <div className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] my-1">
+                    <video
+                      src={message.video}
+                      controls
+                      className="w-full max-h-[280px] rounded-xl object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Document Attachment Card */}
+                {message.document && (
+                  <a
+                    href={message.document.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`flex items-center gap-3 p-2.5 rounded-xl border my-1 max-w-[280px] transition-colors ${
+                      isMine
+                        ? "bg-black/20 border-white/30 text-white hover:bg-black/30"
+                        : "bg-base-300/60 border-base-300 text-base-content hover:bg-base-300"
+                    }`}
+                  >
+                    <div className="p-2 rounded-lg bg-primary/20 text-primary shrink-0">
+                      <FileText className="size-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold truncate">{message.document.name || "Document"}</p>
+                      <p className="text-[10px] opacity-70">
+                        {message.document.size
+                          ? `${(message.document.size / (1024 * 1024)).toFixed(2)} MB`
+                          : "Document File"}
+                      </p>
+                    </div>
+                    <Download className="size-4 shrink-0 opacity-75" />
+                  </a>
+                )}
+
+                {/* Rich Link Preview Card */}
+                {linkPreviewData && (
+                  <a
+                    href={linkPreviewData.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className={`block mb-2 p-2.5 rounded-xl border-l-4 text-xs transition-colors select-text group/link ${
+                      isMine
+                        ? "bg-black/30 border-white/90 text-white hover:bg-black/40"
+                        : "bg-base-300/70 border-primary text-base-content hover:bg-base-300"
+                    }`}
+                  >
+                    <div className={`font-bold text-sm leading-snug mb-1 group-hover/link:underline ${isMine ? "text-white drop-shadow-sm" : "text-primary"}`}>
+                      {linkPreviewData.title}
+                    </div>
+                    <div className={`text-[11.5px] leading-relaxed mb-1 line-clamp-2 ${isMine ? "text-white/90" : "text-base-content/85"}`}>
+                      {linkPreviewData.description}
+                    </div>
+                    <div className={`text-[10px] font-mono ${isMine ? "text-white/70" : "text-base-content/60"}`}>
+                      {linkPreviewData.domain}
+                    </div>
+                  </a>
+                )}
+
+                {/* Text Content */}
+                {message.text && (
+                  <div className="inline-flex items-end flex-wrap gap-x-2 gap-y-0.5 max-w-full">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                      {isCallLog && (
+                        <div className="p-0.5 rounded-full bg-base-100/50 flex-shrink-0">
+                          {isMissed ? (
+                            <PhoneMissed className="size-3.5 text-error" />
+                          ) : message.text.startsWith("📹") ? (
+                            <VideoIcon className="size-3.5 text-primary" />
+                          ) : (
+                            <Phone className="size-3.5 text-success" />
+                          )}
+                        </div>
+                      )}
+                      <span className="text-[13.5px] sm:text-sm font-normal leading-snug break-words">
+                        {isCallLog
+                          ? message.text.replace(/^[^a-zA-Z0-9]+/, "").trim()
+                          : renderTextWithLinks(message.text)}
+                      </span>
+                    </div>
+
+                    {/* Timestamp & Status */}
+                    {!message.image && (
+                      <div className="inline-flex items-center gap-1 text-[10px] opacity-75 font-mono ml-auto whitespace-nowrap self-end pb-0.5 flex-shrink-0">
+                        {message.isEdited && <span className="italic text-[9px] mr-0.5">(edited)</span>}
+                        <span>{formatMessageTime(message.createdAt)}</span>
+                        {isMine && renderMessageTicks(message)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Emoji Reactions Pills Row */}
+          {reactionCounts.length > 0 && (
+            <div className={`flex items-center gap-1 mt-1 -mb-1 z-10 ${isMine ? "justify-end" : "justify-start"}`}>
+              {reactionCounts.map(({ emoji, count }) => (
+                <button
+                  key={emoji}
+                  onClick={() => addReaction(message._id, emoji)}
+                  className="px-1.5 py-0.5 bg-base-100 border border-base-300 rounded-full text-xs font-semibold shadow-sm hover:scale-110 transition-transform flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{emoji}</span>
+                  {count > 1 && <span className="text-[10px] text-base-content/70">{count}</span>}
+                </button>
+              ))}
+            </div>
           )}
         </div>
-
-        {/* Message Bubble */}
       </div>
     </div>
   );
@@ -335,6 +410,7 @@ function ChatContainer() {
   } = useChatStore();
 
   const { authUser, socket } = useAuthStore();
+  const { wallpaper, showDoodles } = useThemeStore();
   const messageEndRef = useRef(null);
   const currentUserId = authUser?.data?._id || authUser?._id;
 
@@ -345,7 +421,7 @@ function ChatContainer() {
   const [lightboxMediaMessage, setLightboxMediaMessage] = useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
 
-  const isTyping = typingUsers[selectedUser?._id];
+  const isTyping = selectedUser?._id ? typingUsers?.[selectedUser._id] : false;
 
   const getReplyTargetId = (replyTo) => {
     if (!replyTo) return null;
@@ -387,7 +463,6 @@ function ChatContainer() {
     }
   }, [messages, isTyping]);
 
-  // Group consecutive messages by date into day sections for WhatsApp sticky date headers
   const messageGroups = useMemo(() => {
     if (!messages || messages.length === 0) return [];
     const groups = [];
@@ -420,7 +495,6 @@ function ChatContainer() {
     );
   }
 
-  // Open Context Menu on Click or Right Click
   const handleOpenContextMenu = (e, message) => {
     e.preventDefault();
     e.stopPropagation();
@@ -430,9 +504,8 @@ function ChatContainer() {
     });
   };
 
-  // Render Status Ticks
   const renderMessageTicks = (message) => {
-    if (message.isRead) {
+    if (message.status === "read" || message.isRead) {
       return (
         <CheckCheck
           className="size-3.5 text-[#38bdf8] stroke-[2.5] filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
@@ -440,21 +513,34 @@ function ChatContainer() {
         />
       );
     }
-    if (message.isDelivered) {
+    if (message.status === "delivered" || message.isDelivered) {
       return <CheckCheck className="size-3.5 opacity-80 stroke-[2] filter drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" title="Delivered" />;
+    }
+    if (message.status === "sending" || message.status === "queued") {
+      return <Clock className="size-3.5 opacity-70 stroke-[2]" title="Sending..." />;
     }
     return <Check className="size-3.5 opacity-70 stroke-[2] filter drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" title="Sent" />;
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden whatsapp-chat-bg transition-colors duration-300 relative w-full h-full">
+    <div
+      style={{
+        backgroundColor: wallpaper || "#0b141a",
+        backgroundImage: showDoodles
+          ? `url(${whatsappBg}), radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px)`
+          : "none",
+        backgroundRepeat: "repeat, repeat",
+        backgroundSize: "440px 440px, 14px 14px",
+        backgroundAttachment: "local",
+      }}
+      className="flex-1 flex flex-col overflow-hidden transition-colors duration-300 relative w-full h-full"
+    >
       <ChatHeader />
+      <PinnedMessageBar />
 
-      {/* Messages area with strict vertical-only scrolling */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3 w-full">
         {messageGroups.map((group) => (
           <div key={group.key} className="relative space-y-3">
-            {/* WhatsApp Floating Sticky Date Header bounded within its day section */}
             <div className="sticky top-2 z-10 flex justify-center my-2 pointer-events-none">
               <div className="whatsapp-date-badge shadow-md pointer-events-auto">
                 {group.dateLabel}
@@ -482,15 +568,11 @@ function ChatContainer() {
           </div>
         ))}
 
-        {/* WhatsApp Animated Bouncing Dots Typing Bubble */}
         {isTyping && (
           <div className="chat chat-start message-animate">
             <div className="chat-image avatar">
               <div className="size-8 rounded-full border border-base-300 shadow-sm">
-                <img
-                  src={selectedUser?.profilePic || avatar}
-                  alt="profile"
-                />
+                <img src={selectedUser?.profilePic || avatar} alt="profile" />
               </div>
             </div>
             <div className="chat-bubble bg-base-200 text-base-content border border-base-300 rounded-2xl rounded-tl-none p-3 shadow-md flex items-center gap-1.5">
@@ -506,11 +588,11 @@ function ChatContainer() {
 
       <MessageInput />
 
-      {/* WhatsApp Message Popover Context Menu */}
       {contextMenuState && (
         <MessageContextMenu
           message={contextMenuState.message}
           position={contextMenuState.position}
+          isMine={String(contextMenuState.message.senderId) === String(currentUserId)}
           onClose={() => setContextMenuState(null)}
           onOpenInfo={() => setInfoModalMessage(contextMenuState.message)}
           onReply={() => setReplyingTo(contextMenuState.message)}
@@ -519,7 +601,6 @@ function ChatContainer() {
         />
       )}
 
-      {/* WhatsApp Delete Message Confirmation Modal */}
       {deleteModalMessage && (
         <DeleteMessageModal
           message={deleteModalMessage}
@@ -528,7 +609,6 @@ function ChatContainer() {
         />
       )}
 
-      {/* WhatsApp Message Info Modal */}
       {infoModalMessage && (
         <MessageInfoModal
           message={infoModalMessage}
@@ -537,7 +617,6 @@ function ChatContainer() {
         />
       )}
 
-      {/* Forward Message Contact Picker Modal */}
       {forwardModalMessage && (
         <ForwardMessageModal
           message={forwardModalMessage}
@@ -545,7 +624,6 @@ function ChatContainer() {
         />
       )}
 
-      {/* WhatsApp Fullscreen Media Lightbox Viewer Modal */}
       {lightboxMediaMessage && (
         <MediaLightboxModal
           message={lightboxMediaMessage}

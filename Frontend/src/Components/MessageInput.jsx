@@ -12,6 +12,10 @@ import {
   MapPin,
   User,
   Reply,
+  Video,
+  FileText,
+  Edit3,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmojiPickerSheet from "./EmojiPickerSheet";
@@ -22,6 +26,10 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoPreview, setVideoPreview] = useState(null);
+  const [docFile, setDocFile] = useState(null);
+
   const [showAttachSheet, setShowAttachSheet] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
@@ -31,12 +39,29 @@ const MessageInput = () => {
   const detectedUrlData = detectedUrl ? getLinkPreviewData(detectedUrl) : null;
 
   const fileInputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const docInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const sheetRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  const { sendMessage, replyingTo, setReplyingTo, selectedUser } = useChatStore();
+  const {
+    sendMessage,
+    editMessage,
+    replyingTo,
+    setReplyingTo,
+    editingMessage,
+    setEditingMessage,
+    selectedUser,
+  } = useChatStore();
   const socket = useAuthStore((state) => state.socket);
+
+  // When editingMessage changes, populate input text
+  useEffect(() => {
+    if (editingMessage) {
+      setText(editingMessage.text || "");
+    }
+  }, [editingMessage]);
 
   // Close attachment sheet on click outside
   useEffect(() => {
@@ -84,6 +109,21 @@ const MessageInput = () => {
     setShowAttachSheet(false);
   };
 
+  const handleVideoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setVideoFile(file);
+    setVideoPreview(URL.createObjectURL(file));
+    setShowAttachSheet(false);
+  };
+
+  const handleDocChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setDocFile(file);
+    setShowAttachSheet(false);
+  };
+
   const handleCapturedPhotoFromCamera = (photoFile) => {
     setImageFile(photoFile);
     setImagePreview(URL.createObjectURL(photoFile));
@@ -91,10 +131,15 @@ const MessageInput = () => {
     toast.success("Camera photo captured!");
   };
 
-  const removeImage = () => {
+  const removeMedia = () => {
     setImageFile(null);
     setImagePreview(null);
+    setVideoFile(null);
+    setVideoPreview(null);
+    setDocFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (videoInputRef.current) videoInputRef.current.value = "";
+    if (docInputRef.current) docInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
@@ -132,7 +177,17 @@ const MessageInput = () => {
   const handleSendMessage = async (e) => {
     e?.preventDefault();
 
-    if (!text.trim() && !imageFile) {
+    if (editingMessage) {
+      if (!text.trim()) return;
+      try {
+        await editMessage(editingMessage._id, text.trim());
+        setText("");
+        setEditingMessage(null);
+      } catch (err) {}
+      return;
+    }
+
+    if (!text.trim() && !imageFile && !videoFile && !docFile) {
       return;
     }
 
@@ -148,11 +203,13 @@ const MessageInput = () => {
     const formData = new FormData();
     if (text.trim()) formData.append("text", text.trim());
     if (imageFile) formData.append("image", imageFile);
+    if (videoFile) formData.append("video", videoFile);
+    if (docFile) formData.append("document", docFile);
 
     try {
       await sendMessage(formData);
       setText("");
-      removeImage();
+      removeMedia();
       setShowEmojiPicker(false);
       setShowAttachSheet(false);
       toast.success("Sent!", { id: toastId });
@@ -161,7 +218,7 @@ const MessageInput = () => {
     }
   };
 
-  const canSend = text.trim() || imageFile;
+  const canSend = text.trim() || imageFile || videoFile || docFile;
 
   return (
     <div className="relative p-2.5 sm:p-3 w-full border-t border-base-300 bg-base-100 transition-colors duration-300">
@@ -175,6 +232,20 @@ const MessageInput = () => {
       />
       <input
         type="file"
+        accept="video/*"
+        className="hidden"
+        ref={videoInputRef}
+        onChange={handleVideoChange}
+      />
+      <input
+        type="file"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+        className="hidden"
+        ref={docInputRef}
+        onChange={handleDocChange}
+      />
+      <input
+        type="file"
         accept="image/*"
         capture="environment"
         className="hidden"
@@ -182,8 +253,31 @@ const MessageInput = () => {
         onChange={handleImageChange}
       />
 
-      {/* WhatsApp Style Link Preview Draft Banner (Screenshot 1) */}
-      {detectedUrlData && !isLinkPreviewDismissed && (
+      {/* Editing Message Banner */}
+      {editingMessage && (
+        <div className="mb-2 p-2 bg-warning/10 border-l-4 border-warning rounded-xl flex items-center justify-between text-xs animate-fade-in">
+          <div className="flex items-center gap-2 truncate flex-1">
+            <Edit3 className="size-4 text-warning flex-shrink-0" />
+            <div className="truncate">
+              <span className="font-bold text-warning block">Edit Message</span>
+              <span className="text-base-content/80 truncate block">{editingMessage.text}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingMessage(null);
+              setText("");
+            }}
+            className="btn btn-ghost btn-circle btn-xs text-base-content/60 hover:text-base-content"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Link Preview Banner */}
+      {detectedUrlData && !isLinkPreviewDismissed && !editingMessage && (
         <div className="mb-2 p-3 bg-base-200 border border-base-300 rounded-2xl flex items-center justify-between shadow-md animate-fade-in text-xs">
           <div className="flex flex-col gap-0.5 min-w-0 pr-3">
             <span className="font-bold text-base-content truncate">
@@ -191,9 +285,6 @@ const MessageInput = () => {
             </span>
             <span className="text-base-content/70 truncate text-[11px]">
               {detectedUrlData.url}
-            </span>
-            <span className="text-base-content/50 truncate text-[10px]">
-              {detectedUrlData.domain}
             </span>
           </div>
           <button
@@ -207,15 +298,13 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* WhatsApp Style Reply Banner Preview */}
-      {replyingTo && (
+      {/* Reply Banner */}
+      {replyingTo && !editingMessage && (
         <div className="mb-2 p-2 bg-base-200 border-l-4 border-primary rounded-xl flex items-center justify-between text-xs animate-fade-in">
           <div className="flex items-center gap-2 truncate flex-1">
             <Reply className="size-4 text-primary flex-shrink-0" />
             <div className="truncate">
-              <span className="font-bold text-primary block truncate">
-                Replying to message
-              </span>
+              <span className="font-bold text-primary block truncate">Replying to message</span>
               <span className="text-base-content/80 truncate block">
                 {replyingTo.text || (replyingTo.image ? "📷 Photo" : "Attachment")}
               </span>
@@ -231,17 +320,31 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* Image Preview Thumb */}
-      {imagePreview && (
+      {/* Media Previews (Image / Video / Doc) */}
+      {(imagePreview || videoPreview || docFile) && (
         <div className="mb-2 flex items-center gap-2 px-2">
           <div className="relative">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-16 h-16 object-cover rounded-xl border border-base-300 shadow-md"
-            />
+            {imagePreview && (
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="w-16 h-16 object-cover rounded-xl border border-base-300 shadow-md"
+              />
+            )}
+            {videoPreview && (
+              <video
+                src={videoPreview}
+                className="w-20 h-16 object-cover rounded-xl border border-base-300 shadow-md"
+              />
+            )}
+            {docFile && (
+              <div className="px-3 py-2 bg-base-200 border border-base-300 rounded-xl text-xs font-semibold text-primary flex items-center gap-2">
+                <FileText className="size-4" />
+                <span className="truncate max-w-[120px]">{docFile.name}</span>
+              </div>
+            )}
             <button
-              onClick={removeImage}
+              onClick={removeMedia}
               className="absolute -top-1.5 -right-1.5 size-5 rounded-full bg-error text-white flex items-center justify-center hover:scale-110 transition-transform shadow-md"
               type="button"
             >
@@ -251,7 +354,7 @@ const MessageInput = () => {
         </div>
       )}
 
-      {/* WhatsApp Style Categorized Emoji, GIF & Sticker Picker Sheet */}
+      {/* Emoji Picker Sheet */}
       <EmojiPickerSheet
         isOpen={showEmojiPicker}
         onClose={() => setShowEmojiPicker(false)}
@@ -259,14 +362,14 @@ const MessageInput = () => {
         onDeleteChar={() => handleTyping(text.slice(0, -1))}
       />
 
-      {/* Live Camera Photo Capture Modal */}
+      {/* Camera Capture Modal */}
       <CameraCaptureModal
         isOpen={isCameraModalOpen}
         onClose={() => setIsCameraModalOpen(false)}
         onSendCapturedPhoto={handleCapturedPhotoFromCamera}
       />
 
-      {/* WhatsApp Style Attachment Bottom Sheet */}
+      {/* Attachment Bottom Sheet */}
       {showAttachSheet && (
         <div
           ref={sheetRef}
@@ -275,7 +378,7 @@ const MessageInput = () => {
           <div className="w-10 h-1 bg-base-300 rounded-full mx-auto mb-4" />
 
           <div className="grid grid-cols-4 gap-3 text-center">
-            {/* Gallery Option */}
+            {/* Photos */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -284,10 +387,34 @@ const MessageInput = () => {
               <div className="size-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
                 <Image className="size-6" />
               </div>
-              <span className="text-xs font-medium text-base-content/80">Gallery</span>
+              <span className="text-xs font-medium text-base-content/80">Photos</span>
             </button>
 
-            {/* Live Camera Option */}
+            {/* Video */}
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              className="flex flex-col items-center gap-1.5 group cursor-pointer"
+            >
+              <div className="size-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                <Video className="size-6" />
+              </div>
+              <span className="text-xs font-medium text-base-content/80">Video</span>
+            </button>
+
+            {/* Document */}
+            <button
+              type="button"
+              onClick={() => docInputRef.current?.click()}
+              className="flex flex-col items-center gap-1.5 group cursor-pointer"
+            >
+              <div className="size-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                <FileText className="size-6" />
+              </div>
+              <span className="text-xs font-medium text-base-content/80">Document</span>
+            </button>
+
+            {/* Camera */}
             <button
               type="button"
               onClick={() => {
@@ -301,38 +428,13 @@ const MessageInput = () => {
               </div>
               <span className="text-xs font-medium text-base-content/80">Camera</span>
             </button>
-
-            {/* Location Option */}
-            <button
-              type="button"
-              onClick={handleShareLocation}
-              className="flex flex-col items-center gap-1.5 group cursor-pointer"
-            >
-              <div className="size-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                <MapPin className="size-6" />
-              </div>
-              <span className="text-xs font-medium text-base-content/80">Location</span>
-            </button>
-
-            {/* Contact Option */}
-            <button
-              type="button"
-              onClick={handleShareContact}
-              className="flex flex-col items-center gap-1.5 group cursor-pointer"
-            >
-              <div className="size-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                <User className="size-6" />
-              </div>
-              <span className="text-xs font-medium text-base-content/80">Contact</span>
-            </button>
           </div>
         </div>
       )}
 
-      {/* Main WhatsApp Pill Form */}
+      {/* Main Form */}
       <form onSubmit={handleSendMessage} className="flex items-center gap-2">
         <div className="flex-1 flex items-center gap-1.5 px-3 py-1.5 bg-base-200/90 rounded-full border border-base-300 shadow-inner focus-within:border-primary transition-colors">
-          {/* Emoji Button */}
           <button
             type="button"
             onClick={(e) => {
@@ -343,49 +445,57 @@ const MessageInput = () => {
             className={`p-1 transition-colors ${
               showEmojiPicker ? "text-primary scale-110" : "text-base-content/50 hover:text-primary"
             }`}
-            title="Emojis, GIFs & Stickers"
+            title="Emojis"
           >
             <Smile className="size-5" />
           </button>
 
-          {/* Text Input */}
           <input
             type="text"
             className="flex-1 bg-transparent border-0 outline-none text-sm text-base-content placeholder:text-base-content/40 px-1"
-            placeholder="Message"
+            placeholder={editingMessage ? "Edit message..." : "Message"}
             value={text}
             onChange={(e) => handleTyping(e.target.value)}
           />
 
-          {/* Paperclip Attachment Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowAttachSheet((prev) => !prev);
-              setShowEmojiPicker(false);
-            }}
-            className={`p-1 transition-colors ${
-              showAttachSheet ? "text-primary" : "text-base-content/50 hover:text-base-content"
-            }`}
-            title="Attach file"
-          >
-            <Paperclip className="size-5 rotate-45" />
-          </button>
+          {!editingMessage && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAttachSheet((prev) => !prev);
+                  setShowEmojiPicker(false);
+                }}
+                className={`p-1 transition-colors ${
+                  showAttachSheet ? "text-primary" : "text-base-content/50 hover:text-base-content"
+                }`}
+                title="Attach file"
+              >
+                <Paperclip className="size-5 rotate-45" />
+              </button>
 
-          {/* Quick Camera Capture Button */}
-          <button
-            type="button"
-            onClick={() => setIsCameraModalOpen(true)}
-            className="text-base-content/50 hover:text-base-content transition-colors p-1"
-            title="Live Camera Photo"
-          >
-            <Camera className="size-5" />
-          </button>
+              <button
+                type="button"
+                onClick={() => setIsCameraModalOpen(true)}
+                className="text-base-content/50 hover:text-base-content transition-colors p-1"
+                title="Live Camera"
+              >
+                <Camera className="size-5" />
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Floating Green WhatsApp Mic / Send Button */}
-        {canSend ? (
+        {editingMessage ? (
+          <button
+            type="submit"
+            className="btn btn-warning btn-circle size-11 shadow-lg hover:scale-105 transition-transform flex-shrink-0"
+            title="Save Edit"
+          >
+            <Check className="size-5" />
+          </button>
+        ) : canSend ? (
           <button
             type="submit"
             className="btn btn-primary btn-circle size-11 shadow-lg hover:scale-105 transition-transform flex-shrink-0"

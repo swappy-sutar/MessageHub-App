@@ -77,3 +77,29 @@ export const acceptRejectInviteSchema = z.object({
 export const idParamSchema = z.object({
   id: mongoObjectIdSchema,
 });
+
+// Message Advanced Schemas
+export const editMessageSchema = z.object({
+  text: z
+    .string({ required_error: "Text is required to edit message" })
+    .trim()
+    .min(1, "Message text cannot be empty")
+    .max(10000, "Message text too long"),
+});
+
+export const reactionSchema = z.object({
+  emoji: z
+    .string({ required_error: "Emoji string is required" })
+    .trim()
+    .min(1, "Emoji cannot be empty")
+    .max(10, "Invalid emoji string"),
+});
+
+export const searchQuerySchema = z.object({
+  q: z
+    .string({ required_error: "Query parameter 'q' is required" })
+    .trim()
+    .min(1, "Search query cannot be empty")
+    .max(200, "Search query too long"),
+});
+

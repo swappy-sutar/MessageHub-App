@@ -43,6 +43,61 @@ export const validateImageFile = (file, options = {}) => {
   return { valid: true };
 };
 
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/x-msvideo",
+]);
+
+const ALLOWED_DOC_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "application/zip",
+  "application/x-zip-compressed",
+]);
+
+export const validateVideoFile = (file, options = {}) => {
+  if (!file) return { valid: false, message: "No video provided" };
+  const maxSizeMB = options.maxSizeMB || 50;
+  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+  if (!file.mimetype || !ALLOWED_VIDEO_TYPES.has(file.mimetype.toLowerCase())) {
+    return {
+      valid: false,
+      message: `Invalid video type (${file.mimetype || "unknown"}). Allowed formats: MP4, WebM, MOV, AVI.`,
+    };
+  }
+
+  if (file.size > maxSizeBytes) {
+    return {
+      valid: false,
+      message: `Video size exceeds ${maxSizeMB} MB limit.`,
+    };
+  }
+
+  return { valid: true };
+};
+
+export const validateDocumentFile = (file, options = {}) => {
+  if (!file) return { valid: false, message: "No document provided" };
+  const maxSizeMB = options.maxSizeMB || 25;
+  const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+  if (file.size > maxSizeBytes) {
+    return {
+      valid: false,
+      message: `Document size exceeds ${maxSizeMB} MB limit.`,
+    };
+  }
+
+  return { valid: true };
+};
+
 /**
  * Safely removes temporary upload file from disk
  * @param {Object} file - Express-fileupload file object
@@ -58,3 +113,4 @@ export const cleanupTempFile = async (file) => {
     }
   }
 };
+

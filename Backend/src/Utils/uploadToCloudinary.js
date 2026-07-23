@@ -25,4 +25,21 @@ const ImageUploadCloudinary = async (file, folder, height, quality) => {
   }
 };
 
-export { ImageUploadCloudinary };
+const MediaUploadCloudinary = async (file, folder, resourceType = "auto") => {
+  const options = {
+    folder,
+    resource_type: resourceType,
+  };
+
+  try {
+    return await cloudinary.uploader.upload(file.tempFilePath, options);
+  } catch (error) {
+    console.error("Cloudinary media upload error:", error.stack || error);
+    throw new Error("Failed to upload media file. Please try again.");
+  } finally {
+    await cleanupTempFile(file);
+  }
+};
+
+export { ImageUploadCloudinary, MediaUploadCloudinary };
+

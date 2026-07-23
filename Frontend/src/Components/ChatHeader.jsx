@@ -3,13 +3,14 @@ import { X, Phone, Video, ArrowLeft, MoreVertical, BellOff, ChevronDown } from "
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { useCallStore } from "../store/useCallStore";
+import { usePresenceStore } from "../store/usePresenceStore";
 import ChatHeaderMenu from "./ChatHeaderMenu";
 import avatar from "../assets/avatar.png";
 import toast from "react-hot-toast";
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, typingUsers, toggleContactInfo, toggleSearch } = useChatStore();
-  const { onlineUsers } = useAuthStore();
+  const { onlineUsers, lastSeenMap } = usePresenceStore();
   const { startCall } = useCallStore();
 
   const [showMenu, setShowMenu] = useState(false);
@@ -39,9 +40,10 @@ const ChatHeader = () => {
 
   const isOnline = Boolean(
     selectedUser?._id &&
-      onlineUsers.some((id) => String(id) === String(selectedUser._id))
+      (onlineUsers || []).some((id) => String(id) === String(selectedUser._id))
   );
-  const isTyping = typingUsers[selectedUser?._id];
+  const isTyping = selectedUser?._id ? typingUsers?.[selectedUser._id] : false;
+  const lastSeenDate = selectedUser?._id ? lastSeenMap?.[selectedUser._id] : null;
 
   const handleToggleMute = () => {
     const nextState = !isMuted;

@@ -42,9 +42,9 @@ export const MessageHubLogoLockup = ({ className = "", size = "md", hideTextMobi
     <div className={`flex items-center gap-2.5 ${className}`}>
       <MessageHubMark className={iconSizes[size] || iconSizes.md} />
       <div className={`${hideTextMobile ? "hidden sm:block" : "block"}`}>
-        <div className={`font-black tracking-tight text-base-content ${textSizes[size] || textSizes.md}`}>
-          MESSAGE<span className="text-primary font-bold ml-1">HUB</span>
-        </div>
+        <span className={`font-bold tracking-tight text-base-content ${textSizes[size] || textSizes.md}`}>
+          Message<span className="text-primary font-black">Hub</span>
+        </span>
       </div>
     </div>
   );
@@ -55,7 +55,7 @@ export const MessageHubLoadingSpinner = ({ stateText = "Connecting..." }) => {
     <div className="flex flex-col items-center justify-center gap-4 select-none p-6">
       <div className="relative flex items-center justify-center">
         {/* Pulsing Animated Ambient Glow */}
-        <div className="absolute size-24 rounded-full bg-cyan-400/20 blur-xl animate-ping" />
+        <div className="absolute size-24 rounded-full bg-primary/20 blur-xl animate-ping" />
         <div className="absolute size-20 rounded-full bg-primary/30 blur-lg animate-pulse" />
         <MessageHubMark className="size-20 relative z-10 animate-bounce" glow animated />
       </div>

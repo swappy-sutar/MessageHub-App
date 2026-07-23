@@ -20,11 +20,12 @@ import {
 import InviteFriendModal from "./InviteFriendModal";
 import CameraCaptureModal from "./CameraCaptureModal";
 import MessageHubLogo from "./MessageHubLogo";
+import avatarLogo from "../assets/avatar.png";
 import { toast } from "react-hot-toast";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
-  const { unreadCounts, setSelectedUser, users } = useChatStore();
+  const { unreadCounts, setSelectedUser, users, toggleSettings } = useChatStore();
   const { receivedInvites, acceptInvite, rejectInvite } = useFriendStore();
   const navigate = useNavigate();
 
@@ -36,9 +37,11 @@ const Navbar = () => {
   const notifRef = useRef(null);
   const menuRef = useRef(null);
 
+  const currentUserObj = authUser?.data || authUser;
+
   // Compute total unread messages & notifications
-  const totalUnreadMessages = Object.values(unreadCounts).reduce((acc, curr) => acc + curr, 0);
-  const totalNotifications = receivedInvites.length + totalUnreadMessages;
+  const totalUnreadMessages = Object.values(unreadCounts || {}).reduce((acc, curr) => acc + curr, 0);
+  const totalNotifications = (receivedInvites || []).length + totalUnreadMessages;
 
   // Click outside listener for notification dropdown & 3-dots menu
   useEffect(() => {
@@ -76,20 +79,20 @@ const Navbar = () => {
               <MessageHubLogo variant="lockup" size="md" />
             </Link>
 
-            {/* Right: Action Icons (Camera, Notifications, 3-Dots Menu) */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Right: Action Icons (Camera, Notifications, Profile Dropdown) */}
+            <div className="flex items-center gap-2">
               {authUser && (
                 <>
-                  {/* Quick Live Camera Action Icon */}
+                  {/* Camera Button */}
                   <button
                     onClick={handleCameraClick}
-                    className="btn btn-sm btn-ghost btn-circle text-base-content/80 hover:text-primary hover:bg-base-200 transition-colors"
-                    title="Live Camera Photo Capture"
+                    className="btn btn-sm btn-ghost btn-circle text-base-content/80 hover:bg-base-200 transition-colors"
+                    title="Open Camera"
                   >
-                    <Camera className="w-5 h-5" />
+                    <Camera className="w-5 h-5 text-base-content/70" />
                   </button>
 
-                  {/* Real-time Notification Bell Center */}
+                  {/* Bell Notification Icon */}
                   <div className="relative" ref={notifRef}>
                     <button
                       onClick={() => {
@@ -99,99 +102,93 @@ const Navbar = () => {
                       className="btn btn-sm btn-ghost btn-circle text-base-content/80 hover:bg-base-200 transition-colors relative"
                       title="Notifications"
                     >
-                      <Bell className="w-5 h-5" />
+                      <Bell className="w-5 h-5 text-base-content/70" />
                       {totalNotifications > 0 && (
-                        <span className="absolute -top-1 -right-1 size-4 rounded-full bg-error text-white font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
-                          {totalNotifications > 9 ? "9+" : totalNotifications}
-                        </span>
+                        <span className="absolute top-1 right-1 size-2.5 bg-error rounded-full ring-2 ring-base-100 animate-pulse" />
                       )}
                     </button>
 
-                    {/* Notifications Dropdown Panel */}
+                    {/* Notification Dropdown Box */}
                     {isNotifOpen && (
-                      <div className="absolute right-0 mt-2 w-80 bg-base-100 border border-base-300 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in-up">
-                        <div className="p-3 bg-base-200/50 border-b border-base-300 flex items-center justify-between">
-                          <span className="font-bold text-xs text-base-content flex items-center gap-1.5">
-                            <Bell className="size-3.5 text-primary" />
-                            Notifications
+                      <div className="absolute right-0 mt-2 w-80 bg-base-100 border border-base-300 rounded-2xl shadow-2xl z-50 p-3 space-y-3 animate-fade-in-up">
+                        <div className="flex items-center justify-between border-b border-base-300 pb-2 px-1">
+                          <h3 className="font-bold text-xs uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
+                            <Bell className="size-3.5 text-primary" /> Notifications
+                          </h3>
+                          <span className="badge badge-primary badge-sm font-bold">
+                            {totalNotifications}
                           </span>
-                          {totalNotifications > 0 && (
-                            <span className="badge badge-primary badge-xs">
-                              {totalNotifications} new
-                            </span>
-                          )}
                         </div>
 
-                        <div className="max-h-72 overflow-y-auto p-2 space-y-1.5">
+                        <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
                           {/* Received Friend Invites */}
                           {receivedInvites.map((invite) => (
                             <div
                               key={invite._id}
-                              className="p-2.5 rounded-xl bg-base-200/40 border border-base-300 flex items-center justify-between text-xs gap-2"
+                              className="p-2.5 rounded-xl bg-base-200/60 border border-base-300 flex flex-col gap-2"
                             >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="size-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                  <UserPlus className="size-3.5 text-primary" />
-                                </div>
-                                <div className="truncate">
-                                  <span className="font-semibold text-base-content block truncate">
-                                    {invite.firstName} {invite.lastName}
+                              <div className="flex items-center gap-2">
+                                <img
+                                  src={invite.senderId?.profilePic || avatarLogo}
+                                  alt={invite.senderId?.firstName}
+                                  className="size-7 rounded-full object-cover"
+                                />
+                                <div className="text-xs truncate">
+                                  <span className="font-bold text-base-content">
+                                    {invite.senderId?.firstName} {invite.senderId?.lastName}
                                   </span>
-                                  <span className="text-[10px] text-base-content/50">
-                                    Sent a friend invite
-                                  </span>
+                                  <p className="text-[10px] text-base-content/60">
+                                    Sent you a friend invite
+                                  </p>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1 flex-shrink-0">
+                              <div className="flex gap-2">
                                 <button
-                                  onClick={() => rejectInvite(invite._id)}
-                                  className="btn btn-xs btn-ghost text-error"
+                                  onClick={() => acceptInvite(invite.senderId?._id)}
+                                  className="btn btn-xs btn-primary flex-1 gap-1 rounded-lg"
                                 >
-                                  <X className="size-3" />
+                                  <Check className="size-3" /> Accept
                                 </button>
                                 <button
-                                  onClick={() => acceptInvite(invite._id)}
-                                  className="btn btn-xs btn-success text-white"
+                                  onClick={() => rejectInvite(invite.senderId?._id)}
+                                  className="btn btn-xs btn-ghost border border-base-300 flex-1 gap-1 rounded-lg text-error"
                                 >
-                                  <Check className="size-3" />
+                                  <X className="size-3" /> Decline
                                 </button>
                               </div>
                             </div>
                           ))}
 
-                          {/* Unread Chat Messages */}
-                          {Object.entries(unreadCounts).map(([userId, count]) => {
+                          {/* Unread Chat Message Notifications */}
+                          {Object.entries(unreadCounts).map(([senderId, count]) => {
                             if (count <= 0) return null;
-                            const senderUser = users.find(
-                              (u) => String(u._id) === userId
-                            );
+                            const senderUser = users.find((u) => String(u._id) === String(senderId));
                             if (!senderUser) return null;
 
                             return (
                               <div
-                                key={userId}
+                                key={senderId}
                                 onClick={() => {
                                   setSelectedUser(senderUser);
                                   setIsNotifOpen(false);
                                 }}
-                                className="p-2.5 rounded-xl bg-base-200/40 border border-base-300 flex items-center justify-between text-xs cursor-pointer hover:bg-base-200"
+                                className="p-2.5 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-between hover:bg-base-200 transition-colors cursor-pointer"
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   <div className="size-7 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
                                     <MessageSquare className="size-3.5 text-success" />
                                   </div>
-                                  <div className="truncate">
+                                  <div className="truncate text-xs">
                                     <span className="font-semibold text-base-content block truncate">
                                       {senderUser.firstName} {senderUser.lastName}
                                     </span>
                                     <span className="text-[10px] text-primary font-medium">
-                                      {count} new unread {count === 1 ? "message" : "messages"}
+                                      {count} new message{count > 1 ? "s" : ""}
                                     </span>
                                   </div>
                                 </div>
-
-                                <span className="badge badge-primary badge-xs font-mono font-bold">
+                                <span className="badge badge-primary badge-xs">
                                   {count}
                                 </span>
                               </div>
@@ -208,73 +205,21 @@ const Navbar = () => {
                     )}
                   </div>
 
-                  {/* 3-Dots Kebab Menu (⋮) */}
-                  <div className="relative" ref={menuRef}>
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(!isMenuOpen);
-                        setIsNotifOpen(false);
-                      }}
-                      className="btn btn-sm btn-ghost btn-circle text-base-content/80 hover:bg-base-200 transition-colors"
-                      title="More Options"
-                    >
-                      <MoreVertical className="w-5 h-5" />
-                    </button>
-
-                    {/* 3-Dots Dropdown Options Menu */}
-                    {isMenuOpen && (
-                      <div className="absolute right-0 mt-2 w-52 bg-base-100 border border-base-300 rounded-2xl shadow-2xl z-50 p-1.5 space-y-1 animate-fade-in-up">
-                        <button
-                          onClick={() => {
-                            setIsInviteModalOpen(true);
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl text-base-content hover:bg-base-200 transition-colors"
-                        >
-                          <span className="flex items-center gap-2.5">
-                            <UserPlus className="size-4 text-primary" />
-                            Invite Friends
-                          </span>
-                          {receivedInvites.length > 0 && (
-                            <span className="badge badge-error badge-xs text-white font-mono">
-                              {receivedInvites.length}
-                            </span>
-                          )}
-                        </button>
-
-                        <Link
-                          to="/profile"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-base-content hover:bg-base-200 transition-colors"
-                        >
-                          <User className="size-4 text-primary" />
-                          Profile
-                        </Link>
-
-                        <Link
-                          to="/settings"
-                          onClick={() => setIsMenuOpen(false)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-base-content hover:bg-base-200 transition-colors"
-                        >
-                          <Palette className="size-4 text-primary" />
-                          Themes
-                        </Link>
-
-                        <div className="divider my-1 border-base-300" />
-
-                        <button
-                          onClick={() => {
-                            logout();
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-xl text-error hover:bg-error/10 transition-colors"
-                        >
-                          <LogOut className="size-4 text-error" />
-                          Logout
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {/* User Profile Avatar Button - DIRECTLY OPENS SETTINGS DRAWER */}
+                  <button
+                    onClick={() => {
+                      toggleSettings();
+                      setIsNotifOpen(false);
+                    }}
+                    className="btn btn-sm btn-ghost btn-circle p-0.5 border border-base-300 hover:border-primary transition-all overflow-hidden cursor-pointer"
+                    title="Open Settings Drawer"
+                  >
+                    <img
+                      src={currentUserObj?.profilePic || avatarLogo}
+                      alt="Account Settings"
+                      className="size-full rounded-full object-cover hover:scale-105 transition-transform"
+                    />
+                  </button>
                 </>
               )}
 

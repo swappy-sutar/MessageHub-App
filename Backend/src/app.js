@@ -84,6 +84,8 @@ import authRoutes from "./Routes/auth.routes.js";
 import userRoutes from "./Routes/user.routes.js";
 import messageRoutes from "./Routes/message.routes.js";
 import friendRoutes from "./Routes/friend.routes.js";
+import groupRoutes from "./Routes/group.routes.js";
+import e2eeRoutes from "./Routes/e2ee.routes.js";
 
 app.get("/", (req, res) => {
   res.json({
@@ -97,6 +99,8 @@ app.use("/api/v1/auth", authLimiter, authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/messages", messageRoutes);
 app.use("/api/v1/friends", friendRoutes);
+app.use("/api/v1/groups", groupRoutes);
+app.use("/api/v1/e2ee", e2eeRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

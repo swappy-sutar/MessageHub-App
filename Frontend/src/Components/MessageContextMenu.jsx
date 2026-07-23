@@ -7,12 +7,18 @@ import {
   CornerUpRight,
   Trash2,
   Star,
+  Pin,
+  Edit3,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useChatStore } from "../store/useChatStore";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 const MessageContextMenu = ({
   message,
   position,
+  isMine,
   onClose,
   onOpenInfo,
   onReply,
@@ -20,8 +26,8 @@ const MessageContextMenu = ({
   onDelete,
 }) => {
   const menuRef = useRef(null);
+  const { addReaction, pinMessage, setEditingMessage } = useChatStore();
 
-  // Close menu on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -37,7 +43,7 @@ const MessageContextMenu = ({
   const handleCopy = () => {
     if (message.text) {
       navigator.clipboard.writeText(message.text);
-      toast.success("Text copied to clipboard!");
+      toast.success("Text copied!");
     } else {
       toast.error("No text to copy");
     }
@@ -45,18 +51,24 @@ const MessageContextMenu = ({
   };
 
   const handleDownload = () => {
-    if (message.image) {
+    const url = message.image || message.video || message.document?.url;
+    if (url) {
       const link = document.createElement("a");
-      link.href = message.image;
-      link.download = `messagehub_image_${Date.now()}.jpg`;
+      link.href = url;
+      link.download = message.document?.name || `attachment_${Date.now()}`;
       link.target = "_blank";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Downloading image...");
+      toast.success("Downloading attachment...");
     } else {
-      toast.error("No image attachment found");
+      toast.error("No media attachment found");
     }
+    onClose();
+  };
+
+  const handleReactionClick = (emoji) => {
+    addReaction(message._id, emoji);
     onClose();
   };
 
@@ -64,12 +76,26 @@ const MessageContextMenu = ({
     <div
       ref={menuRef}
       style={{
-        top: `${Math.min(position.y, window.innerHeight - 380)}px`,
-        left: `${Math.min(position.x, window.innerWidth - 220)}px`,
+        top: `${Math.min(position.y, window.innerHeight - 440)}px`,
+        left: `${Math.min(position.x, window.innerWidth - 240)}px`,
       }}
-      className="fixed z-50 bg-base-100 text-base-content border border-base-300 rounded-2xl w-52 py-2 shadow-2xl animate-fade-in text-sm font-sans transition-colors duration-300"
+      className="fixed z-50 bg-base-100 text-base-content border border-base-300 rounded-2xl w-56 py-2 shadow-2xl animate-fade-in text-sm font-sans transition-colors duration-300"
     >
-      {/* 1. Message Info */}
+      {/* Quick Reaction Emoji Row */}
+      <div className="px-3 py-1.5 flex items-center justify-between border-b border-base-300 mb-1">
+        {QUICK_REACTIONS.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            onClick={() => handleReactionClick(emoji)}
+            className="text-lg hover:scale-125 transition-transform p-1 rounded hover:bg-base-200"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+
+      {/* Message Info */}
       <button
         type="button"
         onClick={() => {
@@ -82,7 +108,35 @@ const MessageContextMenu = ({
         <span>Message info</span>
       </button>
 
-      {/* 2. Reply */}
+      {/* Edit (Own text messages only) */}
+      {isMine && message.text && !message.deletedForEveryone && (
+        <button
+          type="button"
+          onClick={() => {
+            setEditingMessage(message);
+            onClose();
+          }}
+          className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-base-200 transition-colors text-left font-medium"
+        >
+          <Edit3 className="size-4 text-warning" />
+          <span>Edit message</span>
+        </button>
+      )}
+
+      {/* Pin / Unpin */}
+      <button
+        type="button"
+        onClick={() => {
+          pinMessage(message._id);
+          onClose();
+        }}
+        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-base-200 transition-colors text-left font-medium"
+      >
+        <Pin className="size-4 text-primary rotate-45" />
+        <span>{message.pinnedAt ? "Unpin message" : "Pin message"}</span>
+      </button>
+
+      {/* Reply */}
       <button
         type="button"
         onClick={() => {
@@ -95,7 +149,7 @@ const MessageContextMenu = ({
         <span>Reply</span>
       </button>
 
-      {/* 3. Copy */}
+      {/* Copy */}
       <button
         type="button"
         onClick={handleCopy}
@@ -105,8 +159,8 @@ const MessageContextMenu = ({
         <span>Copy</span>
       </button>
 
-      {/* 4. Download (for images) */}
-      {message.image && (
+      {/* Download */}
+      {(message.image || message.video || message.document) && (
         <button
           type="button"
           onClick={handleDownload}
@@ -117,7 +171,7 @@ const MessageContextMenu = ({
         </button>
       )}
 
-      {/* 5. Forward */}
+      {/* Forward */}
       <button
         type="button"
         onClick={() => {
@@ -130,22 +184,9 @@ const MessageContextMenu = ({
         <span>Forward</span>
       </button>
 
-      {/* 6. Star */}
-      <button
-        type="button"
-        onClick={() => {
-          toast.success("Message starred!");
-          onClose();
-        }}
-        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-base-200 transition-colors text-left font-medium"
-      >
-        <Star className="size-4 text-base-content/70" />
-        <span>Star</span>
-      </button>
-
       <div className="h-[1px] bg-base-300 my-1" />
 
-      {/* 7. Delete */}
+      {/* Delete */}
       <button
         type="button"
         onClick={() => {

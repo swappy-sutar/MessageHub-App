@@ -4,7 +4,7 @@ import { useChatStore } from "../store/useChatStore";
 
 function BottomNav({ activeTab, setActiveTab }) {
   const { unreadCounts } = useChatStore();
-  const totalUnread = Object.values(unreadCounts).reduce((acc, curr) => acc + curr, 0);
+  const totalUnread = Object.values(unreadCounts || {}).reduce((acc, curr) => acc + curr, 0);
 
   const TABS = [
     { id: "chats", label: "Chats", icon: MessageSquare },

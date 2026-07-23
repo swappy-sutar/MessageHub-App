@@ -64,6 +64,14 @@ const UserSchema = new Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
+    isInvisible: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

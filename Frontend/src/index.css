@@ -249,3 +249,44 @@ body {
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
   border-left: 3px solid #6366f1;
 }
+
+/* WhatsApp style full-row & bubble message reply highlight animations */
+@keyframes whatsappRowHighlight {
+  0% {
+    background-color: rgba(99, 102, 241, 0.3);
+  }
+  40% {
+    background-color: rgba(99, 102, 241, 0.4);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes whatsappBubbleHighlight {
+  0% {
+    background-color: #6366f1 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 25px rgba(99, 102, 241, 0.85), 0 0 8px #6366f1 !important;
+    transform: scale(1.03);
+  }
+  40% {
+    background-color: #4f46e5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5) !important;
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.whatsapp-row-highlight {
+  animation: whatsappRowHighlight 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  border-radius: 1rem;
+}
+
+.whatsapp-bubble-highlight {
+  animation: whatsappBubbleHighlight 2s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  z-index: 10;
+}

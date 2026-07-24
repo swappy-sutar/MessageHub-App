@@ -372,11 +372,15 @@ const MediaLightboxModal = ({
                       : "opacity-60 hover:opacity-100 hover:scale-105 border-white/10"
                   }`}
                 >
-                  <img
-                    src={itemUrl}
-                    alt={`Thumbnail ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                  />
+                  {itemIsVideo ? (
+                    <video src={itemUrl} className="w-full h-full object-cover pointer-events-none" />
+                  ) : (
+                    <img
+                      src={itemUrl}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
 
                   {/* Video Badge */}
                   {itemIsVideo && (

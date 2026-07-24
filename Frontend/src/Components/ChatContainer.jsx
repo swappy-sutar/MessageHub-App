@@ -279,12 +279,26 @@ function SwipeableMessageItem({
 
                 {/* Video Attachment */}
                 {message.video && (
-                  <div className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] my-1">
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onOpenLightbox) onOpenLightbox(message);
+                    }}
+                    className="relative rounded-xl overflow-hidden w-full max-w-[280px] sm:max-w-[340px] my-1 cursor-pointer group/vid"
+                  >
                     <video
                       src={message.video}
-                      controls
                       className="w-full max-h-[280px] rounded-xl object-cover"
                     />
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover/vid:bg-black/40 transition-colors">
+                      <div className="size-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-xs">
+                        <Play className="size-5 fill-white ml-0.5" />
+                      </div>
+                    </div>
+                    <div className="absolute bottom-1.5 right-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] flex items-center gap-1 font-mono shadow-md">
+                      <span>{formatMessageTime(message.createdAt)}</span>
+                      {isMine && renderMessageTicks(message)}
+                    </div>
                   </div>
                 )}
 

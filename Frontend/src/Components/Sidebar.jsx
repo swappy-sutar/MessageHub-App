@@ -20,7 +20,6 @@ function Sidebar() {
   const { receivedInvites, getInvites, initInviteListeners } = useFriendStore();
 
   const [activeTab, setActiveTab] = useState("all"); // 'all' | 'chats' | 'groups'
-  const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -46,21 +45,17 @@ function Sidebar() {
   const safeGroups = groups || [];
 
   // Filter direct contacts
-  const filteredUsers = safeUsers
-    .filter((user) => (showOnlineOnly ? isUserOnline(user._id) : true))
-    .filter((user) => {
-      if (!searchQuery) return true;
-      const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
-      return fullName.includes(searchQuery.toLowerCase());
-    });
+  const filteredUsers = safeUsers.filter((user) => {
+    if (!searchQuery) return true;
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase());
+  });
 
-  // Filter groups (Groups do not have online presence, so exclude them when Online filter is active)
-  const filteredGroups = showOnlineOnly
-    ? []
-    : safeGroups.filter((group) => {
-        if (!searchQuery) return true;
-        return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
-      });
+  // Filter groups
+  const filteredGroups = safeGroups.filter((group) => {
+    if (!searchQuery) return true;
+    return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   // Build unified list sorted chronologically by latest message timestamp (newest message 1st!)
   const combinedItems = [];
@@ -169,13 +164,13 @@ function Sidebar() {
           )}
         </div>
 
-        {/* Filter Tabs & Online Toggle */}
-        <div className="flex items-center justify-between gap-1.5 pt-0.5 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40 shrink-0">
+        {/* Filter Tabs */}
+        <div className="pt-0.5">
+          <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40 w-full">
             <button
               type="button"
               onClick={() => setActiveTab("all")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
+              className={`flex-1 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap text-center ${
                 activeTab === "all" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
@@ -184,7 +179,7 @@ function Sidebar() {
             <button
               type="button"
               onClick={() => setActiveTab("chats")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
+              className={`flex-1 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap text-center ${
                 activeTab === "chats" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
@@ -193,28 +188,13 @@ function Sidebar() {
             <button
               type="button"
               onClick={() => setActiveTab("groups")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
+              className={`flex-1 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap text-center ${
                 activeTab === "groups" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
               Groups ({filteredGroups.length})
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setShowOnlineOnly(!showOnlineOnly)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all select-none cursor-pointer whitespace-nowrap shrink-0 ${
-              showOnlineOnly
-                ? "bg-primary/15 text-primary border-primary/30 shadow-sm"
-                : "bg-base-200/50 text-base-content/60 border-base-300/40 hover:bg-base-200"
-            }`}
-            title="Filter online contacts"
-          >
-            <span className={`size-2 rounded-full shrink-0 ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
-            <span>Online</span>
-            <span className="text-[10px] font-mono opacity-80">({onlineCount})</span>
-          </button>
         </div>
       </div>
 
@@ -348,8 +328,6 @@ function Sidebar() {
             <p className="text-xs font-semibold text-base-content/70">
               {searchQuery
                 ? "No matching contacts or groups found."
-                : showOnlineOnly
-                ? "No contacts are online right now."
                 : activeTab === "groups"
                 ? "No groups found."
                 : activeTab === "chats"
@@ -357,30 +335,18 @@ function Sidebar() {
                 : "No chats yet!"}
             </p>
             <div className="flex items-center justify-center gap-2">
-              {showOnlineOnly ? (
-                <button
-                  type="button"
-                  onClick={() => setShowOnlineOnly(false)}
-                  className="btn btn-xs btn-primary rounded-xl"
-                >
-                  Show All Contacts
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setIsGroupModalOpen(true)}
-                    className="btn btn-xs btn-outline btn-primary rounded-xl"
-                  >
-                    Create Group
-                  </button>
-                  <button
-                    onClick={() => setIsInviteModalOpen(true)}
-                    className="btn btn-xs btn-primary rounded-xl"
-                  >
-                    Invite Friends
-                  </button>
-                </>
-              )}
+              <button
+                onClick={() => setIsGroupModalOpen(true)}
+                className="btn btn-xs btn-outline btn-primary rounded-xl"
+              >
+                Create Group
+              </button>
+              <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className="btn btn-xs btn-primary rounded-xl"
+              >
+                Invite Friends
+              </button>
             </div>
           </div>
         )}

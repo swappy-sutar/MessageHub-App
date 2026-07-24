@@ -1,33 +1,40 @@
-import React from 'react'
+import React from "react";
 
 function MessageSkeleton() {
   const skeletonMessages = Array(6).fill(null);
   return (
-    <div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {skeletonMessages.map((_, idx) => (
+    <div className="flex-1 overflow-y-auto p-4 space-y-4 animate-fade-in w-full">
+      {skeletonMessages.map((_, idx) => {
+        const isMine = idx % 2 === 1;
+        return (
           <div
             key={idx}
-            className={`chat ${idx % 2 === 0 ? "chat-start" : "chat-end"}`}
+            className={`flex items-end gap-2.5 ${isMine ? "justify-end" : "justify-start"} animate-pulse`}
           >
-            <div className="chat-image avatar">
-              <div className="size-10 rounded-full">
-                <div className="skeleton w-full h-full rounded-full" />
+            {!isMine && (
+              <div className="skeleton size-8 rounded-full flex-shrink-0 bg-base-300/80" />
+            )}
+
+            <div
+              className={`p-3.5 rounded-2xl space-y-2 max-w-[70%] ${
+                isMine ? "bg-primary/20 rounded-br-none" : "bg-base-200/80 rounded-bl-none"
+              }`}
+            >
+              <div className="skeleton h-3.5 w-32 sm:w-44 rounded-md bg-base-300/80" />
+              <div className="skeleton h-3 w-48 sm:w-64 rounded-md bg-base-300/60" />
+              <div className="flex justify-end pt-1">
+                <div className="skeleton h-2.5 w-12 rounded-md bg-base-300/50" />
               </div>
             </div>
 
-            <div className="chat-header mb-1">
-              <div className="skeleton h-4 w-16" />
-            </div>
-
-            <div className="chat-bubble bg-transparent p-0">
-              <div className="skeleton h-16 w-[200px]" />
-            </div>
+            {isMine && (
+              <div className="skeleton size-8 rounded-full flex-shrink-0 bg-base-300/80" />
+            )}
           </div>
-        ))}
-      </div>
+        );
+      })}
     </div>
   );
 }
 
-export default MessageSkeleton
+export default MessageSkeleton;

@@ -217,7 +217,10 @@ function Sidebar() {
 
       {/* Main Unified Chat List (Sorted by Newest Message 1st) */}
       <div className="overflow-y-auto flex-1 py-2">
-        {combinedItems.map((item) => {
+        {(isUsersLoading || isGroupLoading) && combinedItems.length === 0 ? (
+          <SidebarSkeleton />
+        ) : (
+          combinedItems.map((item) => {
           if (item.itemType === "group") {
             const group = item;
             const isSelected = selectedUser?._id === group._id && selectedUser?.isGroup;
@@ -334,7 +337,7 @@ function Sidebar() {
               </button>
             );
           }
-        })}
+        }))}
 
         {combinedItems.length === 0 && (
           <div className="text-center py-10 px-4 space-y-3">

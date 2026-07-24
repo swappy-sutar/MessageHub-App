@@ -557,7 +557,10 @@ function ChatContainer() {
       <PinnedMessageBar />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3 w-full">
-        {messageGroups.map((group) => (
+        {isMessagesLoading && messages.length === 0 ? (
+          <MessageSkeleton />
+        ) : (
+          messageGroups.map((group) => (
           <div key={group.key} className="relative space-y-3">
             <div className="sticky top-2 z-10 flex justify-center my-2 pointer-events-none">
               <div className="whatsapp-date-badge shadow-md pointer-events-auto">
@@ -584,7 +587,8 @@ function ChatContainer() {
               />
             ))}
           </div>
-        ))}
+        ))
+        )}
 
         {isTyping && (
           <div className="chat chat-start message-animate">

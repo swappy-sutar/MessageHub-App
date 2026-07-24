@@ -206,4 +206,54 @@ const promoteAdmin = async (req, res) => {
   }
 };
 
-export { createGroup, getGroupDetails, addMembers, removeMember, promoteAdmin };
+const getUserGroups = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find all group conversations user belongs to
+    const conversations = await Conversation.find({
+      type: "group",
+      participants: userId,
+    }).sort({ updatedAt: -1 });
+
+    const conversationIds = conversations.map((c) => c._id);
+    const groups = await Group.find({ conversationId: { $in: conversationIds } }).lean();
+
+    const groupMap = new Map();
+    groups.forEach((g) => groupMap.set(g.conversationId.toString(), g));
+
+    const result = conversations.map((conv) => {
+      const g = groupMap.get(conv._id.toString()) || {};
+      let lastMessageText = "";
+      let lastMessageTime = null;
+
+      if (conv.lastMessage) {
+        lastMessageText = conv.lastMessage.text || "";
+        lastMessageTime = conv.lastMessage.createdAt || conv.updatedAt;
+      }
+
+      return {
+        _id: g._id || conv._id,
+        conversationId: conv._id,
+        name: g.name || "Group",
+        description: g.description || "",
+        profilePic: g.groupPic || "",
+        isGroup: true,
+        membersCount: g.membersCount || conv.participants.length,
+        lastMessageText,
+        lastMessageTime,
+        updatedAt: conv.updatedAt,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error in getUserGroups:", error.stack || error);
+    return res.status(500).json({ success: false, message: "Failed to fetch groups" });
+  }
+};
+
+export { createGroup, getGroupDetails, addMembers, removeMember, promoteAdmin, getUserGroups };

@@ -8,6 +8,18 @@ export const useGroupStore = create((set, get) => ({
   activeGroup: null,
   isGroupLoading: false,
 
+  getUserGroups: async () => {
+    set({ isGroupLoading: true });
+    try {
+      const res = await axiosInstance.get("/groups/my-groups");
+      set({ groups: res.data.data || [], isGroupLoading: false });
+      return res.data.data;
+    } catch (error) {
+      set({ isGroupLoading: false });
+      console.error("Error fetching user groups:", error);
+    }
+  },
+
   createGroup: async (groupData) => {
     set({ isGroupLoading: true });
     try {

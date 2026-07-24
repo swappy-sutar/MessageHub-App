@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { useFriendStore } from "../store/useFriendStore";
+import { useGroupStore } from "../store/useGroupStore";
 import { usePresenceStore } from "../store/usePresenceStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users, Search, UserPlus, Plus, X } from "lucide-react";
+import { Users, Search, UserPlus, Plus, X, MessageSquare } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../utils/formatMessageTime.js";
 import avatar from "../assets/avatar.png";
@@ -13,10 +14,12 @@ import CreateGroupModal from "./CreateGroupModal";
 function Sidebar() {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading, unreadCounts } =
     useChatStore();
+  const { groups, getUserGroups } = useGroupStore();
   const { socket } = useAuthStore();
   const { onlineUsers } = usePresenceStore();
   const { receivedInvites, getInvites, initInviteListeners } = useFriendStore();
 
+  const [activeTab, setActiveTab] = useState("all"); // 'all' | 'chats' | 'groups'
   const [showOnlineOnly, setShowOnlineOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
@@ -25,7 +28,8 @@ function Sidebar() {
   useEffect(() => {
     getUsers();
     getInvites();
-  }, [getUsers, getInvites]);
+    getUserGroups();
+  }, [getUsers, getInvites, getUserGroups]);
 
   useEffect(() => {
     if (socket) {
@@ -39,7 +43,9 @@ function Sidebar() {
   };
 
   const safeUsers = users || [];
+  const safeGroups = groups || [];
 
+  // Filter contacts
   const filteredUsers = safeUsers
     .filter((user) => (showOnlineOnly ? isUserOnline(user._id) : true))
     .filter((user) => {
@@ -47,6 +53,12 @@ function Sidebar() {
       const fullName = `${user.firstName || ""} ${user.lastName || ""}`.toLowerCase();
       return fullName.includes(searchQuery.toLowerCase());
     });
+
+  // Filter groups
+  const filteredGroups = safeGroups.filter((group) => {
+    if (!searchQuery) return true;
+    return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const onlineCount = safeUsers.filter((u) => isUserOnline(u._id)).length;
 
@@ -62,7 +74,7 @@ function Sidebar() {
               <Users className="size-4 text-primary" />
             </div>
             <span className="font-semibold text-sm text-base-content">
-              Contacts
+              Chats & Groups
             </span>
           </div>
 
@@ -107,11 +119,10 @@ function Sidebar() {
             spellCheck="false"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search contacts or chat history..."
+            placeholder="Search contacts or groups..."
             className="w-full pl-9 pr-8 py-2 bg-base-200/70 hover:bg-base-200 text-xs text-base-content placeholder:text-base-content/40 border border-base-300/50 focus:border-primary/60 focus:bg-base-100 rounded-full focus:ring-2 focus:ring-primary/15 focus:outline-none shadow-inner transition-all duration-200 font-medium"
           />
 
-          {/* Clear Search Input Button */}
           {searchQuery && (
             <button
               type="button"
@@ -124,129 +135,200 @@ function Sidebar() {
           )}
         </div>
 
-        {/* Online Filter & Status Pill Badges */}
-        <div className="flex items-center justify-between gap-2 pt-0.5">
+        {/* Category Tabs & Online Filter */}
+        <div className="flex items-center justify-between gap-1 pt-0.5">
+          <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40">
+            <button
+              type="button"
+              onClick={() => setActiveTab("all")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                activeTab === "all" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
+              }`}
+            >
+              All ({filteredUsers.length + filteredGroups.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("chats")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                activeTab === "chats" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
+              }`}
+            >
+              Direct
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("groups")}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+                activeTab === "groups" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
+              }`}
+            >
+              Groups ({filteredGroups.length})
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowOnlineOnly(!showOnlineOnly)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-all duration-200 select-none cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all select-none cursor-pointer ${
               showOnlineOnly
                 ? "bg-primary/15 text-primary border-primary/30 shadow-sm"
-                : "bg-base-200/50 text-base-content/60 border-base-300/40 hover:bg-base-200 hover:text-base-content"
+                : "bg-base-200/50 text-base-content/60 border-base-300/40 hover:bg-base-200"
             }`}
+            title="Filter online contacts"
           >
             <span className={`size-2 rounded-full ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
-            <span>Online only</span>
+            <span className="hidden md:inline">Online</span>
           </button>
-
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-success/10 text-success border border-success/20">
-            <span className="size-1.5 rounded-full bg-success animate-ping" />
-            <span>{onlineCount} online</span>
-          </div>
         </div>
       </div>
 
-      {/* User list */}
+      {/* Main List */}
       <div className="overflow-y-auto flex-1 py-2">
-        {filteredUsers.map((user) => {
-          const isSelected = selectedUser?._id === user._id;
-          const isOnline = isUserOnline(user._id);
-          const unreadCount = unreadCounts?.[user._id] || unreadCounts?.[String(user._id)] || 0;
+        {/* Render Groups section if activeTab is 'all' or 'groups' */}
+        {(activeTab === "all" || activeTab === "groups") &&
+          filteredGroups.map((group) => {
+            const isSelected = selectedUser?._id === group._id;
+            return (
+              <button
+                key={`group-${group._id}`}
+                onClick={() =>
+                  setSelectedUser({
+                    _id: group._id,
+                    firstName: group.name,
+                    lastName: "",
+                    profilePic: group.profilePic || "",
+                    isGroup: true,
+                    membersCount: group.membersCount,
+                  })
+                }
+                className={`w-full p-3 flex items-center gap-3 transition-colors duration-200 hover:bg-base-200 ${
+                  isSelected ? "bg-base-200 ring-1 ring-primary/20 border-l-4 border-primary" : ""
+                }`}
+              >
+                {/* Group Avatar */}
+                <div className="relative flex-shrink-0">
+                  <div className="size-11 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold border border-primary/30">
+                    <Users className="size-5" />
+                  </div>
+                </div>
 
-          return (
-            <button
-              key={user._id}
-              onClick={() => setSelectedUser(user)}
-              className={`w-full p-3 flex items-center gap-3 transition-colors duration-200 hover:bg-base-200 ${
-                isSelected
-                  ? "bg-base-200 ring-1 ring-primary/20 border-l-4 border-primary"
-                  : ""
-              }`}
-            >
-              {/* Avatar */}
-              <div className="relative flex-shrink-0">
-                <img
-                  src={user.profilePic || avatar}
-                  alt={`${user.firstName} ${user.lastName}`}
-                  className="size-11 object-cover rounded-full border border-base-300"
-                />
-                {isOnline && (
-                  <span className="absolute bottom-0 right-0 size-3 rounded-full bg-success ring-2 ring-base-100 online-pulse" />
-                )}
-              </div>
+                <div className="text-left min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="badge badge-xs badge-primary font-mono text-[9px] px-1">
+                        Group
+                      </span>
+                      <span className="font-semibold text-sm truncate text-base-content">
+                        {group.name}
+                      </span>
+                    </div>
 
-              {/* User info & Unread Row (WhatsApp / Telegram Style) */}
-              <div className="text-left min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-1">
-                  <span
-                    className={`font-semibold text-sm truncate ${
-                      isSelected ? "text-primary" : "text-base-content"
-                    }`}
-                  >
-                    {user.firstName} {user.lastName}
-                  </span>
+                    {group.lastMessageTime && (
+                      <span className="text-[10px] font-medium text-base-content/40 flex-shrink-0">
+                        {formatMessageTime(group.lastMessageTime)}
+                      </span>
+                    )}
+                  </div>
 
-                  {/* Timestamp */}
-                  {user.lastMessageTime && (
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <span className="text-xs text-base-content/60 truncate max-w-[170px]">
+                      {group.lastMessageText || `${group.membersCount || 0} members`}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+
+        {/* Render Direct Contacts section if activeTab is 'all' or 'chats' */}
+        {(activeTab === "all" || activeTab === "chats") &&
+          filteredUsers.map((user) => {
+            const isSelected = selectedUser?._id === user._id && !selectedUser?.isGroup;
+            const isOnline = isUserOnline(user._id);
+            const unreadCount = unreadCounts?.[user._id] || unreadCounts?.[String(user._id)] || 0;
+
+            return (
+              <button
+                key={`user-${user._id}`}
+                onClick={() => setSelectedUser(user)}
+                className={`w-full p-3 flex items-center gap-3 transition-colors duration-200 hover:bg-base-200 ${
+                  isSelected ? "bg-base-200 ring-1 ring-primary/20 border-l-4 border-primary" : ""
+                }`}
+              >
+                {/* Avatar */}
+                <div className="relative flex-shrink-0">
+                  <img
+                    src={user.profilePic || avatar}
+                    alt={`${user.firstName} ${user.lastName}`}
+                    className="size-11 object-cover rounded-full border border-base-300"
+                  />
+                  {isOnline && (
+                    <span className="absolute bottom-0 right-0 size-3 rounded-full bg-success ring-2 ring-base-100 online-pulse" />
+                  )}
+                </div>
+
+                {/* User Info */}
+                <div className="text-left min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
                     <span
-                      className={`text-[10px] font-medium flex-shrink-0 ${
-                        unreadCount > 0 ? "text-success font-bold" : "text-base-content/40"
+                      className={`font-semibold text-sm truncate ${
+                        isSelected ? "text-primary" : "text-base-content"
                       }`}
                     >
-                      {formatMessageTime(user.lastMessageTime)}
+                      {user.firstName} {user.lastName}
                     </span>
-                  )}
-                </div>
 
-                <div className="flex items-center justify-between gap-2 mt-0.5">
-                  {/* Last Message Preview Text */}
-                  <span className="text-xs text-base-content/60 truncate max-w-[140px] sm:max-w-[170px]">
-                    {user.lastMessageText || (isOnline ? "Online" : "Offline")}
-                  </span>
+                    {user.lastMessageTime && (
+                      <span
+                        className={`text-[10px] font-medium flex-shrink-0 ${
+                          unreadCount > 0 ? "text-success font-bold" : "text-base-content/40"
+                        }`}
+                      >
+                        {formatMessageTime(user.lastMessageTime)}
+                      </span>
+                    )}
+                  </div>
 
-                  {/* WhatsApp-style Green Circular Unread Count Badge */}
-                  {unreadCount > 0 && (
-                    <span className="badge badge-success badge-sm rounded-full font-bold text-[11px] min-w-[20px] h-[20px] p-0 flex items-center justify-center text-white shadow-md animate-pulse flex-shrink-0">
-                      {unreadCount}
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <span className="text-xs text-base-content/60 truncate max-w-[170px]">
+                      {user.lastMessageText || (isOnline ? "Online" : "Offline")}
                     </span>
-                  )}
-                </div>
-              </div>
-            </button>
-          );
-        })}
 
-        {filteredUsers.length === 0 && (
+                    {unreadCount > 0 && (
+                      <span className="badge badge-success badge-sm rounded-full font-bold text-[11px] min-w-[20px] h-[20px] p-0 flex items-center justify-center text-white shadow-md animate-pulse flex-shrink-0">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+
+        {filteredUsers.length === 0 && filteredGroups.length === 0 && (
           <div className="text-center py-10 px-4 space-y-3">
             <Users className="size-8 mx-auto text-base-content/20" />
             <p className="text-xs text-base-content/50">
-              {searchQuery ? "No matching contacts found." : "No friends added yet!"}
+              {searchQuery ? "No matching contacts or groups found." : "No chats yet!"}
             </p>
-            <button
-              onClick={() => setIsInviteModalOpen(true)}
-              className="btn btn-sm btn-primary gap-1 rounded-xl mx-auto shadow-md"
-            >
-              <UserPlus className="size-4" />
-              Invite Friends Now
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setIsGroupModalOpen(true)}
+                className="btn btn-xs btn-outline btn-primary rounded-xl"
+              >
+                Create Group
+              </button>
+              <button
+                onClick={() => setIsInviteModalOpen(true)}
+                className="btn btn-xs btn-primary rounded-xl"
+              >
+                Invite Friends
+              </button>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Mobile Floating Action Button (FAB) in Bottom Right Corner */}
-      <button
-        onClick={() => setIsInviteModalOpen(true)}
-        className="sm:hidden absolute bottom-5 right-5 z-20 size-12 rounded-full bg-primary text-primary-content flex items-center justify-center shadow-lg hover:brightness-110 hover:scale-105 active:scale-95 transition-all group cursor-pointer border-none"
-        title="Invite new friend"
-      >
-        <Plus className="size-6 transition-transform group-hover:rotate-90 duration-300" />
-        
-        {receivedInvites.length > 0 && (
-          <span className="absolute -top-1 -right-1 size-5 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center border-2 border-base-100 shadow-md">
-            {receivedInvites.length}
-          </span>
-        )}
-      </button>
 
       {/* Invite Friend Modal */}
       <InviteFriendModal
@@ -257,7 +339,10 @@ function Sidebar() {
       {/* Create Group Modal */}
       <CreateGroupModal
         isOpen={isGroupModalOpen}
-        onClose={() => setIsGroupModalOpen(false)}
+        onClose={() => {
+          setIsGroupModalOpen(false);
+          getUserGroups();
+        }}
       />
     </aside>
   );

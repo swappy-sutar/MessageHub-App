@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   X,
   Image,
@@ -20,14 +21,19 @@ import {
 import avatar from "../assets/avatar.png";
 import toast from "react-hot-toast";
 import MediaGalleryModal from "./MediaGalleryModal";
+import MediaLightboxModal from "./MediaLightboxModal";
 
 const ContactInfoPanel = ({ contact, onClose }) => {
   const { messages, setSelectedUser } = useChatStore();
+  const { authUser } = useAuthStore();
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [lightboxMessage, setLightboxMessage] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isFavourite, setIsFavourite] = useState(false);
 
   if (!contact) return null;
+
+  const currentUserId = authUser?.data?._id || authUser?._id;
 
   // Filter all shared media
   const sharedMedia = messages.filter((m) => !m.deletedForEveryone && (m.image || m.video));
@@ -113,19 +119,31 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             </div>
           </div>
 
-          {/* Thumbnail Gallery Preview */}
+          {/* Thumbnail Gallery Preview (Clicking opens Lightbox viewer directly!) */}
           {sharedMedia.length > 0 ? (
-            <div
-              onClick={() => setIsMediaModalOpen(true)}
-              className="grid grid-cols-3 sm:grid-cols-4 gap-2 px-1 cursor-pointer"
-            >
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 px-1">
               {sharedMedia.slice(0, 4).map((msg, idx) => (
-                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-base-300 shadow-xs hover:scale-105 transition-transform">
-                  <img
-                    src={msg.image || msg.video}
-                    alt="media"
-                    className="w-full h-full object-cover"
-                  />
+                <div
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxMessage(msg);
+                  }}
+                  className="relative aspect-square rounded-xl overflow-hidden border border-base-300 shadow-xs hover:scale-105 transition-transform cursor-pointer group"
+                >
+                  {msg.image ? (
+                    <img
+                      src={msg.image}
+                      alt="media"
+                      className="w-full h-full object-cover group-hover:brightness-95 transition-all"
+                    />
+                  ) : msg.video ? (
+                    <video
+                      src={msg.video}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               ))}
             </div>
@@ -141,7 +159,7 @@ const ContactInfoPanel = ({ contact, onClose }) => {
 
         <div className="h-[1px] bg-base-300" />
 
-        {/* Settings & Privacy Options List (Matching Screenshot) */}
+        {/* Settings & Privacy Options List */}
         <div className="space-y-1">
           {/* Starred Messages */}
           <div
@@ -212,9 +230,8 @@ const ContactInfoPanel = ({ contact, onClose }) => {
 
         <div className="h-[1px] bg-base-300" />
 
-        {/* Action Buttons Section (Favourites, Add to List, Clear, Block, Report, Delete) */}
+        {/* Action Buttons Section */}
         <div className="space-y-1">
-          {/* Add to Favourites */}
           <div
             onClick={handleToggleFavourite}
             className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors text-sm font-semibold text-base-content"
@@ -223,7 +240,6 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             <span>{isFavourite ? "Remove from favourites" : "Add to favourites"}</span>
           </div>
 
-          {/* Add to List */}
           <div
             onClick={() => toast("Added contact to list")}
             className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors text-sm font-semibold text-base-content"
@@ -232,7 +248,6 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             <span>Add to list</span>
           </div>
 
-          {/* Clear Chat (Red) */}
           <div
             onClick={() => toast.success("Chat history cleared")}
             className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
@@ -241,7 +256,6 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             <span>Clear chat</span>
           </div>
 
-          {/* Block Contact (Red) */}
           <div
             onClick={() => toast.error(`Blocked ${contactDisplayName}`)}
             className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
@@ -250,7 +264,6 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             <span>Block {contactDisplayName}</span>
           </div>
 
-          {/* Report Contact (Red) */}
           <div
             onClick={() => toast.error(`Reported ${contactDisplayName}`)}
             className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
@@ -259,7 +272,6 @@ const ContactInfoPanel = ({ contact, onClose }) => {
             <span>Report {contactDisplayName}</span>
           </div>
 
-          {/* Delete Chat (Red) */}
           <div
             onClick={() => {
               setSelectedUser(null);
@@ -274,13 +286,23 @@ const ContactInfoPanel = ({ contact, onClose }) => {
         </div>
       </div>
 
-      {/* Media, Links and Docs Drawer Modal */}
+      {/* Media, Links and Docs Drawer Side Panel */}
       <MediaGalleryModal
         isOpen={isMediaModalOpen}
         onClose={() => setIsMediaModalOpen(false)}
         messages={messages}
         contactName={contactDisplayName}
       />
+
+      {/* Fullscreen WhatsApp Web Media Lightbox Modal */}
+      {lightboxMessage && (
+        <MediaLightboxModal
+          message={lightboxMessage}
+          currentUserId={currentUserId}
+          selectedUser={contact}
+          onClose={() => setLightboxMessage(null)}
+        />
+      )}
     </div>
   );
 };

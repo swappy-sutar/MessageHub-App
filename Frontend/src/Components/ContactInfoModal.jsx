@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import {
   X,
   Image,
@@ -8,16 +9,30 @@ import {
   Shield,
   Lock,
   ChevronRight,
+  Bell,
+  Heart,
+  FolderPlus,
+  MinusCircle,
+  Ban,
+  ThumbsDown,
+  Trash2,
 } from "lucide-react";
 import avatar from "../assets/avatar.png";
 import toast from "react-hot-toast";
 import MediaGalleryModal from "./MediaGalleryModal";
+import MediaLightboxModal from "./MediaLightboxModal";
 
 const ContactInfoModal = ({ contact, onClose }) => {
-  const { messages } = useChatStore();
+  const { messages, setSelectedUser } = useChatStore();
+  const { authUser } = useAuthStore();
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [lightboxMessage, setLightboxMessage] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFavourite, setIsFavourite] = useState(false);
 
   if (!contact) return null;
+
+  const currentUserId = authUser?.data?._id || authUser?._id;
 
   // Filter all shared media items
   const sharedMedia = messages.filter((m) => !m.deletedForEveryone && (m.image || m.video));
@@ -25,6 +40,16 @@ const ContactInfoModal = ({ contact, onClose }) => {
   const contactDisplayName = contact.firstName
     ? `${contact.firstName} ${contact.lastName || ""}`.trim()
     : contact.name || "Contact";
+
+  const handleToggleMute = () => {
+    setIsMuted(!isMuted);
+    toast.success(isMuted ? "Notifications unmuted" : "Notifications muted");
+  };
+
+  const handleToggleFavourite = () => {
+    setIsFavourite(!isFavourite);
+    toast.success(isFavourite ? "Removed from favourites" : "Added to favourites ❤️");
+  };
 
   return (
     <>
@@ -93,19 +118,31 @@ const ContactInfoModal = ({ contact, onClose }) => {
                 </div>
               </div>
 
-              {/* Thumbnail Row Preview */}
+              {/* Thumbnail Row Preview (Clicking opens Lightbox viewer directly!) */}
               {sharedMedia.length > 0 ? (
-                <div
-                  onClick={() => setIsMediaModalOpen(true)}
-                  className="grid grid-cols-4 gap-2 px-1 cursor-pointer"
-                >
+                <div className="grid grid-cols-4 gap-2 px-1">
                   {sharedMedia.slice(0, 4).map((msg, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-base-300 shadow-xs hover:scale-105 transition-transform">
-                      <img
-                        src={msg.image || msg.video}
-                        alt="media"
-                        className="w-full h-full object-cover"
-                      />
+                    <div
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxMessage(msg);
+                      }}
+                      className="relative aspect-square rounded-xl overflow-hidden border border-base-300 shadow-xs hover:scale-105 transition-transform cursor-pointer group"
+                    >
+                      {msg.image ? (
+                        <img
+                          src={msg.image}
+                          alt="media"
+                          className="w-full h-full object-cover group-hover:brightness-95 transition-all"
+                        />
+                      ) : msg.video ? (
+                        <video
+                          src={msg.video}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   ))}
                 </div>
@@ -123,7 +160,6 @@ const ContactInfoModal = ({ contact, onClose }) => {
 
             {/* Settings Options List */}
             <div className="space-y-1">
-              {/* Starred Messages */}
               <div
                 onClick={() => toast("Starred messages feature active!")}
                 className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors text-sm font-semibold text-base-content"
@@ -132,7 +168,19 @@ const ContactInfoModal = ({ contact, onClose }) => {
                 <span>Starred messages</span>
               </div>
 
-              {/* Disappearing Messages */}
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-base-200 transition-colors">
+                <div className="flex items-center gap-3.5">
+                  <Bell className="size-5 text-base-content/70" />
+                  <span className="text-sm font-semibold text-base-content">Mute notifications</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isMuted}
+                  onChange={handleToggleMute}
+                  className="toggle toggle-success toggle-sm"
+                />
+              </div>
+
               <div
                 onClick={() => toast("Disappearing messages: Off")}
                 className="flex items-center justify-between p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors"
@@ -148,7 +196,21 @@ const ContactInfoModal = ({ contact, onClose }) => {
                 </div>
               </div>
 
-              {/* End-to-End Encryption */}
+              <div
+                onClick={() => toast("Advanced chat privacy active")}
+                className="flex items-center justify-between p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-3.5">
+                  <Shield className="size-5 text-base-content/70" />
+                  <div>
+                    <span className="text-sm font-semibold text-base-content block">
+                      Advanced chat privacy
+                    </span>
+                    <span className="text-xs text-base-content/60">Off</span>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-start gap-3.5 p-3 rounded-2xl bg-base-200/40">
                 <Lock className="size-5 text-primary mt-0.5 flex-shrink-0" />
                 <div>
@@ -161,6 +223,63 @@ const ContactInfoModal = ({ contact, onClose }) => {
                 </div>
               </div>
             </div>
+
+            <div className="h-[1px] bg-base-300" />
+
+            {/* Actions List */}
+            <div className="space-y-1">
+              <div
+                onClick={handleToggleFavourite}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors text-sm font-semibold text-base-content"
+              >
+                <Heart className={`size-5 ${isFavourite ? "fill-red-500 text-red-500" : "text-base-content/70"}`} />
+                <span>{isFavourite ? "Remove from favourites" : "Add to favourites"}</span>
+              </div>
+
+              <div
+                onClick={() => toast("Added contact to list")}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-base-200 cursor-pointer transition-colors text-sm font-semibold text-base-content"
+              >
+                <FolderPlus className="size-5 text-base-content/70" />
+                <span>Add to list</span>
+              </div>
+
+              <div
+                onClick={() => toast.success("Chat history cleared")}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
+              >
+                <MinusCircle className="size-5" />
+                <span>Clear chat</span>
+              </div>
+
+              <div
+                onClick={() => toast.error(`Blocked ${contactDisplayName}`)}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
+              >
+                <Ban className="size-5" />
+                <span>Block {contactDisplayName}</span>
+              </div>
+
+              <div
+                onClick={() => toast.error(`Reported ${contactDisplayName}`)}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
+              >
+                <ThumbsDown className="size-5" />
+                <span>Report {contactDisplayName}</span>
+              </div>
+
+              <div
+                onClick={() => {
+                  setSelectedUser(null);
+                  onClose();
+                  toast.success("Chat deleted");
+                }}
+                className="flex items-center gap-3.5 p-3 rounded-2xl hover:bg-red-500/10 cursor-pointer transition-colors text-sm font-semibold text-red-500"
+              >
+                <Trash2 className="size-5" />
+                <span>Delete chat</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -171,6 +290,16 @@ const ContactInfoModal = ({ contact, onClose }) => {
         messages={messages}
         contactName={contactDisplayName}
       />
+
+      {/* Fullscreen WhatsApp Web Media Lightbox Modal */}
+      {lightboxMessage && (
+        <MediaLightboxModal
+          message={lightboxMessage}
+          currentUserId={currentUserId}
+          selectedUser={contact}
+          onClose={() => setLightboxMessage(null)}
+        />
+      )}
     </>
   );
 };

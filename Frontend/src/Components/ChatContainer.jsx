@@ -522,18 +522,22 @@ function ChatContainer() {
     return <Check className="size-3.5 opacity-70 stroke-[2] filter drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]" title="Sent" />;
   };
 
+  const isCustomWallpaper = wallpaper && wallpaper !== "default" && wallpaper !== "theme";
+
   return (
     <div
       style={{
-        backgroundColor: wallpaper || "#0b141a",
+        backgroundColor: isCustomWallpaper ? wallpaper : undefined,
         backgroundImage: showDoodles
-          ? `url(${whatsappBg}), radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px)`
+          ? `url(${whatsappBg}), radial-gradient(rgba(128, 128, 128, 0.2) 1px, transparent 1px)`
           : "none",
         backgroundRepeat: "repeat, repeat",
         backgroundSize: "440px 440px, 14px 14px",
         backgroundAttachment: "local",
       }}
-      className="flex-1 flex flex-col overflow-hidden transition-colors duration-300 relative w-full h-full"
+      className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 relative w-full h-full ${
+        !isCustomWallpaper ? "bg-base-200/90 text-base-content" : ""
+      }`}
     >
       <ChatHeader />
       <PinnedMessageBar />

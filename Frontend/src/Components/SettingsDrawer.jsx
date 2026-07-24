@@ -561,7 +561,11 @@ const SettingsDrawer = () => {
             {/* Grid of solid wallpaper colors */}
             <div className="grid grid-cols-4 gap-3 pt-2">
               {WALLPAPER_COLORS.map((w) => {
-                const isSelected = (wallpaper || "#0b141a").toLowerCase() === w.color.toLowerCase();
+                const isDefault = w.id === "default";
+                const isSelected = isDefault
+                  ? !wallpaper || wallpaper === "default" || wallpaper === "theme"
+                  : (wallpaper || "").toLowerCase() === w.color.toLowerCase();
+
                 return (
                   <button
                     key={w.id}
@@ -570,28 +574,30 @@ const SettingsDrawer = () => {
                       toast.success(`Wallpaper set: ${w.name}`);
                     }}
                     title={w.name}
+                    data-theme={isDefault ? theme : undefined}
                     className={`relative group aspect-square rounded-2xl transition-all duration-200 cursor-pointer overflow-hidden border ${
                       isSelected
                         ? "border-primary ring-2 ring-primary/40 scale-[1.04] shadow-lg"
                         : "border-base-300 hover:border-base-content/30 hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: w.color }}
+                    } ${isDefault ? "bg-base-200 text-base-content" : ""}`}
+                    style={{ backgroundColor: isDefault ? undefined : w.color }}
                   >
                     {/* Doodle Overlay Thumbnail */}
                     {showDoodles && (
-                      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:8px_8px]" />
+                      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(rgba(128,128,128,0.3)_1px,transparent_1px)] [background-size:8px_8px]" />
                     )}
 
-                    {/* Label inside default / Selected checkmark */}
-                    {w.id === "default" && (
-                      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-white/60">
-                        Default
-                      </span>
+                    {/* App Theme Label */}
+                    {isDefault && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center p-1 text-center">
+                        <span className="text-[10px] font-extrabold text-primary">App Theme</span>
+                        <span className="text-[8px] text-base-content/60 font-medium">Default</span>
+                      </div>
                     )}
 
-                    {isSelected && w.id !== "default" && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <Check className="size-4 text-primary font-bold shadow-sm" />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-primary/15 flex items-center justify-center">
+                        <Check className="size-4 text-primary font-extrabold shadow-sm" />
                       </div>
                     )}
 

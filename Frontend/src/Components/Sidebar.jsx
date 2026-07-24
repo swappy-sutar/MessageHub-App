@@ -4,7 +4,7 @@ import { useFriendStore } from "../store/useFriendStore";
 import { useGroupStore } from "../store/useGroupStore";
 import { usePresenceStore } from "../store/usePresenceStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users, Search, UserPlus, Plus, X, MessageSquare } from "lucide-react";
+import { Users, Search, UserPlus, Plus, X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../utils/formatMessageTime.js";
 import avatar from "../assets/avatar.png";
@@ -45,7 +45,7 @@ function Sidebar() {
   const safeUsers = users || [];
   const safeGroups = groups || [];
 
-  // Filter contacts
+  // Filter direct contacts
   const filteredUsers = safeUsers
     .filter((user) => (showOnlineOnly ? isUserOnline(user._id) : true))
     .filter((user) => {
@@ -59,6 +59,38 @@ function Sidebar() {
     if (!searchQuery) return true;
     return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  // Build unified list sorted chronologically by latest message timestamp (newest message 1st!)
+  const combinedItems = [];
+
+  if (activeTab === "all" || activeTab === "chats") {
+    filteredUsers.forEach((user) => {
+      const timeVal = user.lastMessageTime ? new Date(user.lastMessageTime).getTime() : 0;
+      combinedItems.push({
+        ...user,
+        itemType: "user",
+        sortTime: timeVal,
+      });
+    });
+  }
+
+  if (activeTab === "all" || activeTab === "groups") {
+    filteredGroups.forEach((group) => {
+      const timeVal = group.lastMessageTime
+        ? new Date(group.lastMessageTime).getTime()
+        : group.updatedAt
+        ? new Date(group.updatedAt).getTime()
+        : 0;
+      combinedItems.push({
+        ...group,
+        itemType: "group",
+        sortTime: timeVal,
+      });
+    });
+  }
+
+  // Sort descending: newest message timestamp at the very top (1st)!
+  combinedItems.sort((a, b) => b.sortTime - a.sortTime);
 
   const onlineCount = safeUsers.filter((u) => isUserOnline(u._id)).length;
 
@@ -104,7 +136,7 @@ function Sidebar() {
           </div>
         </div>
 
-        {/* Modern WhatsApp & iOS Styled Search Bar */}
+        {/* Search Bar */}
         <div className="relative mb-3 group">
           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center pointer-events-none transition-colors group-focus-within:text-primary text-base-content/40">
             <Search className="size-4 transition-transform group-focus-within:scale-110" />
@@ -135,7 +167,7 @@ function Sidebar() {
           )}
         </div>
 
-        {/* Category Tabs & Online Filter */}
+        {/* Filter Tabs & Online Toggle */}
         <div className="flex items-center justify-between gap-1 pt-0.5">
           <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40">
             <button
@@ -183,12 +215,12 @@ function Sidebar() {
         </div>
       </div>
 
-      {/* Main List */}
+      {/* Main Unified Chat List (Sorted by Newest Message 1st) */}
       <div className="overflow-y-auto flex-1 py-2">
-        {/* Render Groups section if activeTab is 'all' or 'groups' */}
-        {(activeTab === "all" || activeTab === "groups") &&
-          filteredGroups.map((group) => {
-            const isSelected = selectedUser?._id === group._id;
+        {combinedItems.map((item) => {
+          if (item.itemType === "group") {
+            const group = item;
+            const isSelected = selectedUser?._id === group._id && selectedUser?.isGroup;
             return (
               <button
                 key={`group-${group._id}`}
@@ -239,11 +271,8 @@ function Sidebar() {
                 </div>
               </button>
             );
-          })}
-
-        {/* Render Direct Contacts section if activeTab is 'all' or 'chats' */}
-        {(activeTab === "all" || activeTab === "chats") &&
-          filteredUsers.map((user) => {
+          } else {
+            const user = item;
             const isSelected = selectedUser?._id === user._id && !selectedUser?.isGroup;
             const isOnline = isUserOnline(user._id);
             const unreadCount = unreadCounts?.[user._id] || unreadCounts?.[String(user._id)] || 0;
@@ -256,7 +285,7 @@ function Sidebar() {
                   isSelected ? "bg-base-200 ring-1 ring-primary/20 border-l-4 border-primary" : ""
                 }`}
               >
-                {/* Avatar */}
+                {/* User Avatar */}
                 <div className="relative flex-shrink-0">
                   <img
                     src={user.profilePic || avatar}
@@ -304,9 +333,10 @@ function Sidebar() {
                 </div>
               </button>
             );
-          })}
+          }
+        })}
 
-        {filteredUsers.length === 0 && filteredGroups.length === 0 && (
+        {combinedItems.length === 0 && (
           <div className="text-center py-10 px-4 space-y-3">
             <Users className="size-8 mx-auto text-base-content/20" />
             <p className="text-xs text-base-content/50">

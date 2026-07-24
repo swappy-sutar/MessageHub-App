@@ -1,9 +1,17 @@
 import React, { useState } from "react";
 import { X, ArrowLeft, Image as ImageIcon, FileText, Link2, Download, ExternalLink, Play, Film } from "lucide-react";
 import { formatMessageTime } from "../utils/formatMessageTime.js";
+import MediaLightboxModal from "./MediaLightboxModal.jsx";
+import { useAuthStore } from "../store/useAuthStore.js";
+import { useChatStore } from "../store/useChatStore.js";
 
-const MediaGalleryModal = ({ isOpen, onClose, messages = [], contactName = "Chat", onOpenLightbox }) => {
+const MediaGalleryModal = ({ isOpen, onClose, messages = [], contactName = "Chat" }) => {
   const [activeTab, setActiveTab] = useState("media"); // 'media' | 'docs' | 'links'
+  const [lightboxMessage, setLightboxMessage] = useState(null);
+
+  const { authUser } = useChatStore();
+  const { selectedUser } = useChatStore();
+  const currentUserId = authUser?.data?._id || authUser?._id;
 
   if (!isOpen) return null;
 
@@ -57,10 +65,11 @@ const MediaGalleryModal = ({ isOpen, onClose, messages = [], contactName = "Chat
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex justify-end animate-fade-in">
-      <div className="bg-base-100 border-l border-base-300 w-full max-w-md h-full flex flex-col shadow-2xl animate-slide-in-right">
+    <>
+      {/* WhatsApp Web Style Right Side Panel (Sits below Top Navbar at top-14, no backdrop overlay!) */}
+      <div className="fixed top-14 right-0 bottom-0 z-40 w-full sm:w-[380px] lg:w-[400px] bg-base-100 border-l border-base-300 shadow-2xl flex flex-col animate-slide-in-right font-sans">
         {/* Header */}
-        <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-100">
+        <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-100 h-16 flex-shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
@@ -141,7 +150,7 @@ const MediaGalleryModal = ({ isOpen, onClose, messages = [], contactName = "Chat
                       {items.map((item) => (
                         <div
                           key={item._id}
-                          onClick={() => onOpenLightbox && onOpenLightbox(item)}
+                          onClick={() => setLightboxMessage(item)}
                           className="relative aspect-square rounded-xl overflow-hidden border border-base-300/80 bg-base-200 cursor-pointer group hover:scale-[1.03] transition-all shadow-xs"
                         >
                           {item.image ? (
@@ -280,7 +289,17 @@ const MediaGalleryModal = ({ isOpen, onClose, messages = [], contactName = "Chat
 
         </div>
       </div>
-    </div>
+
+      {/* Fullscreen WhatsApp Web Media Lightbox Modal */}
+      {lightboxMessage && (
+        <MediaLightboxModal
+          message={lightboxMessage}
+          currentUserId={currentUserId}
+          selectedUser={selectedUser}
+          onClose={() => setLightboxMessage(null)}
+        />
+      )}
+    </>
   );
 };
 

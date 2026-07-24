@@ -213,6 +213,7 @@ function Sidebar() {
           >
             <span className={`size-2 rounded-full ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
             <span className="hidden md:inline">Online</span>
+            <span className="text-[10px] font-mono opacity-80">({onlineCount})</span>
           </button>
         </div>
       </div>
@@ -342,24 +343,44 @@ function Sidebar() {
         }))}
 
         {combinedItems.length === 0 && (
-          <div className="text-center py-10 px-4 space-y-3">
+          <div className="text-center py-10 px-4 space-y-3 animate-fade-in">
             <Users className="size-8 mx-auto text-base-content/20" />
-            <p className="text-xs text-base-content/50">
-              {searchQuery ? "No matching contacts or groups found." : "No chats yet!"}
+            <p className="text-xs font-semibold text-base-content/70">
+              {searchQuery
+                ? "No matching contacts or groups found."
+                : showOnlineOnly
+                ? "No contacts are online right now."
+                : activeTab === "groups"
+                ? "No groups found."
+                : activeTab === "chats"
+                ? "No direct chats found."
+                : "No chats yet!"}
             </p>
             <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => setIsGroupModalOpen(true)}
-                className="btn btn-xs btn-outline btn-primary rounded-xl"
-              >
-                Create Group
-              </button>
-              <button
-                onClick={() => setIsInviteModalOpen(true)}
-                className="btn btn-xs btn-primary rounded-xl"
-              >
-                Invite Friends
-              </button>
+              {showOnlineOnly ? (
+                <button
+                  type="button"
+                  onClick={() => setShowOnlineOnly(false)}
+                  className="btn btn-xs btn-primary rounded-xl"
+                >
+                  Show All Contacts
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setIsGroupModalOpen(true)}
+                    className="btn btn-xs btn-outline btn-primary rounded-xl"
+                  >
+                    Create Group
+                  </button>
+                  <button
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="btn btn-xs btn-primary rounded-xl"
+                  >
+                    Invite Friends
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

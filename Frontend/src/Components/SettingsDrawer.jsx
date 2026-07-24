@@ -281,46 +281,7 @@ const SettingsDrawer = () => {
       {/* ── Scrollable Content ── */}
       <div className="flex-1 overflow-y-auto">
 
-        {/* ══════════════════════════════════
-            ACCOUNT SUB-VIEW
-        ══════════════════════════════════ */}
-        {activeSubView === "account" && (
-          <div className="p-5 space-y-1 animate-fade-in">
-            {[
-              {
-                icon: Shield,
-                label: "Security notifications",
-                action: () => toast("Security notifications settings coming soon"),
-              },
-              {
-                icon: FileText,
-                label: "Request account info",
-                action: () => toast("Account info request sent!"),
-              },
-              {
-                icon: Info,
-                label: "How to delete my account",
-                action: () => toast("Visit settings on web to delete your account"),
-              },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className="w-full px-4 py-4 rounded-2xl flex items-center gap-4 hover:bg-base-200/70 transition-all text-left group"
-                >
-                  <div className="size-10 rounded-2xl bg-base-200 group-hover:bg-primary/10 flex items-center justify-center flex-shrink-0 transition-colors">
-                    <Icon className="size-5 text-base-content/60 group-hover:text-primary transition-colors" />
-                  </div>
-                  <span className="text-sm font-semibold text-base-content group-hover:text-primary transition-colors">
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
+
 
         {/* ══════════════════════════════════
             PRIVACY SUB-VIEW

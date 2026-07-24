@@ -114,12 +114,19 @@ if (REDIS_URL) {
   redisClient = new Redis(REDIS_URL, redisOptions);
   pubClient = new Redis(REDIS_URL, redisOptions);
   subClient = new Redis(REDIS_URL, redisOptions);
-} else if (process.env.NODE_ENV === "production" || process.env.ENABLE_REDIS === "true") {
+} else if (process.env.ENABLE_REDIS === "true") {
   const options = { ...redisOptions, host: REDIS_HOST, port: REDIS_PORT, password: REDIS_PASSWORD };
   redisClient = new Redis(options);
   pubClient = new Redis(options);
   subClient = new Redis(options);
 }
+
+// Suppress unhandled ECONNREFUSED log noise if Redis instances exist
+[redisClient, pubClient, subClient].forEach((client) => {
+  if (client) {
+    client.on("error", () => {});
+  }
+});
 
 export const connectRedis = async () => {
   if (!redisClient) {

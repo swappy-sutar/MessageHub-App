@@ -464,6 +464,20 @@ function ChatContainer() {
     }
   };
 
+  const scrollContainerRef = useRef(null);
+
+  const scrollToBottom = (instant = false) => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({
+        behavior: instant ? "instant" : "smooth",
+        block: "end",
+      });
+    }
+  };
+
   useEffect(() => {
     if (selectedUser?._id) {
       getMessages(selectedUser._id);
@@ -471,11 +485,24 @@ function ChatContainer() {
     }
   }, [selectedUser?._id, socket, getMessages, subscribeToMessages]);
 
+  // Instantly scroll to bottom with recent messages when chat opens or messages load
   useEffect(() => {
-    if (messageEndRef.current && (messages?.length || isTyping)) {
-      messageEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (messages && messages.length > 0) {
+      scrollToBottom(true);
+      const timer1 = setTimeout(() => scrollToBottom(true), 50);
+      const timer2 = setTimeout(() => scrollToBottom(true), 180);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
-  }, [messages, isTyping]);
+  }, [selectedUser?._id, messages?.length]);
+
+  useEffect(() => {
+    if (isTyping) {
+      scrollToBottom(false);
+    }
+  }, [isTyping]);
 
   const messageGroups = useMemo(() => {
     if (!messages || messages.length === 0) return [];
@@ -556,7 +583,10 @@ function ChatContainer() {
       <ChatHeader />
       <PinnedMessageBar />
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3 w-full">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 space-y-2 sm:space-y-3 w-full"
+      >
         {isMessagesLoading && messages.length === 0 ? (
           <MessageSkeleton />
         ) : (

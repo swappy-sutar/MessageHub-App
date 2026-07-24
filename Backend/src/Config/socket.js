@@ -1,41 +1,14 @@
 import { Server } from "socket.io";
 import http from "http";
+import { createAdapter } from "@socket.io/redis-adapter";
 import { app } from "../app.js";
 import { Message } from "../Models/message.model.js";
 import { User } from "../Models/user.model.js";
+import { socketAuthMiddleware } from "../Middlewares/socketAuth.middleware.js";
+import { pubClient, subClient, presenceStore, isRedisConnected } from "./redis.config.js";
+import { SOCKET_EVENTS } from "../Constants/events.constants.js";
 
 const server = http.createServer(app);
-
-// Multi-device socket mapping: userId -> Set of socketIds
-const userSocketsMap = new Map(); // Map<string, Set<string>>
-const invisibleUsers = new Set(); // Set of userIds who enabled invisible mode
-const typingTimeouts = new Map(); // Key: `${from}_${to}`, Value: NodeJS.Timeout
-
-const getReceiverSocketIDs = (userId) => {
-  if (!userId) return [];
-  const sockets = userSocketsMap.get(userId.toString());
-  return sockets ? Array.from(sockets) : [];
-};
-
-const getReceiverSocketID = (userId) => {
-  const sockets = getReceiverSocketIDs(userId);
-  return sockets.length > 0 ? sockets[0] : null;
-};
-
-const emitToUser = (userId, event, payload) => {
-  if (!userId) return;
-  const socketIds = getReceiverSocketIDs(userId);
-  socketIds.forEach((socketId) => {
-    io.to(socketId).emit(event, payload);
-  });
-};
-
-const broadcastOnlineUsers = () => {
-  const onlineUserIds = Array.from(userSocketsMap.keys()).filter(
-    (uId) => !invisibleUsers.has(uId)
-  );
-  io.emit("getOnlineUsers", onlineUserIds);
-};
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -52,7 +25,7 @@ const io = new Server(server, {
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(new Error("CORS Policy Error: Socket origin not allowed"), false);
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -60,16 +33,51 @@ const io = new Server(server, {
   },
   pingInterval: 25000,
   pingTimeout: 10000,
+  maxHttpBufferSize: 1e6, // 1MB limit
 });
 
+// Configure Socket.IO Redis Adapter for horizontal cluster scaling
+if (pubClient && subClient && isRedisConnected) {
+  try {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("⚡ Socket.IO Redis Pub/Sub Adapter Mounted Successfully");
+  } catch (err) {
+    console.warn("⚠️ Failed to attach Redis adapter:", err.message);
+  }
+}
+
+// Enforce JWT Authentication Middleware for Socket Connection Handshake
+io.use(socketAuthMiddleware);
+
+const getReceiverSocketIDs = async (userId) => {
+  if (!userId) return [];
+  return presenceStore.getSocketIDs(userId.toString());
+};
+
+const getReceiverSocketID = async (userId) => {
+  const sockets = await getReceiverSocketIDs(userId);
+  return sockets.length > 0 ? sockets[0] : null;
+};
+
+const emitToUser = async (userId, event, payload) => {
+  if (!userId) return;
+  const socketIds = await getReceiverSocketIDs(userId);
+  socketIds.forEach((socketId) => {
+    io.to(socketId).emit(event, payload);
+  });
+};
+
+const broadcastOnlineUsers = async () => {
+  const onlineUserIds = await presenceStore.getOnlineUsers();
+  io.emit(SOCKET_EVENTS.GET_ONLINE_USERS, onlineUserIds);
+};
+
 io.on("connection", async (socket) => {
-  const userId = socket.handshake.auth?.userId?.toString();
+  const userId = socket.userId;
 
   if (userId) {
-    if (!userSocketsMap.has(userId)) {
-      userSocketsMap.set(userId, new Set());
-    }
-    userSocketsMap.get(userId).add(socket.id);
+    await presenceStore.addSocketMapping(userId, socket.id);
+    socket.join(`user:${userId}`);
 
     // Flush offline message queue
     try {
@@ -85,136 +93,108 @@ io.on("connection", async (socket) => {
           { $set: { isDelivered: true, deliveredAt: now, status: "delivered" } }
         );
 
-        // Notify sender for each pending message
         const sendersToNotify = new Set(pendingMessages.map((m) => m.senderId.toString()));
         sendersToNotify.forEach((sId) => {
-          emitToUser(sId, "messagesDelivered", { toUserId: userId, deliveredAt: now });
+          emitToUser(sId, SOCKET_EVENTS.MESSAGES_DELIVERED, { toUserId: userId, deliveredAt: now });
         });
       }
     } catch (err) {
-      console.error("Error flushing pending messages queue:", err.message);
+      console.error("Error flushing pending message queue:", err.message);
     }
-  } else {
-    console.warn("⚠ No userId found in handshake.auth!");
   }
 
-  broadcastOnlineUsers();
+  await broadcastOnlineUsers();
 
   // --- Heartbeat Event ---
-  socket.on("heartbeat", () => {
-    socket.emit("heartbeatAck", { timestamp: Date.now() });
+  socket.on(SOCKET_EVENTS.HEARTBEAT, () => {
+    socket.emit(SOCKET_EVENTS.HEARTBEAT_ACK, { timestamp: Date.now() });
   });
 
   // --- Invisible Mode Toggle ---
-  socket.on("setInvisible", async ({ isInvisible }) => {
+  socket.on(SOCKET_EVENTS.SET_INVISIBLE, async ({ isInvisible }) => {
     if (!userId) return;
-    if (isInvisible) {
-      invisibleUsers.add(userId);
-    } else {
-      invisibleUsers.delete(userId);
-    }
+    await presenceStore.setInvisible(userId, !!isInvisible);
     try {
       await User.findByIdAndUpdate(userId, { isInvisible: !!isInvisible });
     } catch (e) {}
-    broadcastOnlineUsers();
+    await broadcastOnlineUsers();
   });
 
-  // --- Real-time Message Status Events ---
-  socket.on("markMessagesRead", async ({ senderId }) => {
-    if (!userId || !senderId) return;
+  // --- Real-Time Typing Handlers with Redis TTL Cleanup ---
+  socket.on(SOCKET_EVENTS.TYPING, async ({ to }) => {
+    if (!userId || !to) return;
+    await presenceStore.setTyping(userId, to, 5);
+    emitToUser(to, SOCKET_EVENTS.USER_TYPING, { from: userId });
+  });
 
+  socket.on(SOCKET_EVENTS.STOP_TYPING, async ({ to }) => {
+    if (!userId || !to) return;
+    await presenceStore.removeTyping(userId, to);
+    emitToUser(to, SOCKET_EVENTS.USER_STOPPED_TYPING, { from: userId });
+  });
+
+  // --- Real-time Read Receipts ---
+  socket.on(SOCKET_EVENTS.MARK_MESSAGES_READ, async ({ senderId }) => {
+    if (!userId || !senderId) return;
     try {
       const now = new Date();
       await Message.updateMany(
         { senderId: senderId, receiverId: userId, isRead: false },
         { $set: { isRead: true, isDelivered: true, readAt: now, deliveredAt: now, status: "read" } }
       );
-
-      emitToUser(senderId, "messagesRead", { byUserId: userId, readAt: now });
+      emitToUser(senderId, SOCKET_EVENTS.MESSAGES_READ, { byUserId: userId, readAt: now });
     } catch (err) {
       console.error("Error marking messages read:", err.message);
     }
   });
 
-  // --- Real-time Typing Indicator with 5s Auto Timeout ---
-  socket.on("typing", ({ to }) => {
-    if (!userId || !to) return;
-
-    emitToUser(to, "userTyping", { from: userId });
-
-    const key = `${userId}_${to}`;
-    if (typingTimeouts.has(key)) {
-      clearTimeout(typingTimeouts.get(key));
-    }
-
-    const timeout = setTimeout(() => {
-      emitToUser(to, "userStoppedTyping", { from: userId });
-      typingTimeouts.delete(key);
-    }, 5000);
-
-    typingTimeouts.set(key, timeout);
-  });
-
-  socket.on("stopTyping", ({ to }) => {
-    if (!userId || !to) return;
-
-    const key = `${userId}_${to}`;
-    if (typingTimeouts.has(key)) {
-      clearTimeout(typingTimeouts.get(key));
-      typingTimeouts.delete(key);
-    }
-
-    emitToUser(to, "userStoppedTyping", { from: userId });
-  });
-
   // --- WebRTC Signaling Handlers ---
-  socket.on("callUser", ({ to, offer, callType, callerInfo }) => {
-    const receiverSocketIds = getReceiverSocketIDs(to);
+  socket.on(SOCKET_EVENTS.CALL_USER, async ({ to, offer, callType, callerInfo }) => {
+    const receiverSocketIds = await getReceiverSocketIDs(to);
     if (receiverSocketIds.length > 0) {
-      emitToUser(to, "incomingCall", {
+      emitToUser(to, SOCKET_EVENTS.INCOMING_CALL, {
         from: userId,
         offer,
         callType,
         callerInfo,
       });
     } else {
-      socket.emit("callRejected");
+      socket.emit(SOCKET_EVENTS.CALL_REJECTED);
     }
   });
 
-  socket.on("answerCall", ({ to, answer }) => {
-    emitToUser(to, "callAccepted", { answer });
+  socket.on(SOCKET_EVENTS.ANSWER_CALL, ({ to, answer }) => {
+    emitToUser(to, SOCKET_EVENTS.CALL_ACCEPTED, { answer });
   });
 
-  socket.on("rejectCall", ({ to }) => {
-    emitToUser(to, "callRejected");
+  socket.on(SOCKET_EVENTS.REJECT_CALL, ({ to }) => {
+    emitToUser(to, SOCKET_EVENTS.CALL_REJECTED);
   });
 
-  socket.on("endCall", ({ to }) => {
-    emitToUser(to, "callEnded");
+  socket.on(SOCKET_EVENTS.END_CALL, ({ to }) => {
+    emitToUser(to, SOCKET_EVENTS.CALL_ENDED);
   });
 
-  socket.on("iceCandidate", ({ to, candidate }) => {
-    emitToUser(to, "iceCandidate", { candidate });
+  socket.on(SOCKET_EVENTS.ICE_CANDIDATE, ({ to, candidate }) => {
+    emitToUser(to, SOCKET_EVENTS.ICE_CANDIDATE, { candidate });
   });
 
   // --- Disconnect Handler ---
-  socket.on("disconnect", async () => {
+  socket.on(SOCKET_EVENTS.DISCONNECT, async () => {
     if (userId) {
-      const userSockets = userSocketsMap.get(userId);
-      if (userSockets) {
-        userSockets.delete(socket.id);
-        if (userSockets.size === 0) {
-          userSocketsMap.delete(userId);
-          const now = new Date();
-          try {
-            await User.findByIdAndUpdate(userId, { lastSeen: now });
-          } catch (e) {}
-          io.emit("userLastSeen", { userId, lastSeen: now });
-        }
+      await presenceStore.clearUserTyping(userId);
+      await presenceStore.removeSocketMapping(userId, socket.id);
+      const remaining = await getReceiverSocketIDs(userId);
+
+      if (remaining.length === 0) {
+        const now = new Date();
+        try {
+          await User.findByIdAndUpdate(userId, { lastSeen: now });
+        } catch (e) {}
+        io.emit(SOCKET_EVENTS.USER_LAST_SEEN, { userId, lastSeen: now });
       }
     }
-    broadcastOnlineUsers();
+    await broadcastOnlineUsers();
   });
 });
 

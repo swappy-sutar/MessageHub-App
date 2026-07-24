@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
 @plugin "daisyui" {
   themes: all;
 }
@@ -28,13 +29,16 @@ body {
   width: 4px;
   height: 4px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(99, 102, 241, 0.4);
   border-radius: 10px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.7);
 }
@@ -59,15 +63,23 @@ body {
 .gradient-border {
   position: relative;
   background: linear-gradient(var(--fallback-b1, oklch(var(--b1))), var(--fallback-b1, oklch(var(--b1)))) padding-box,
-              var(--gradient-primary) border-box;
+    var(--gradient-primary) border-box;
   border: 1px solid transparent;
 }
 
 /* Animated gradient bg */
 @keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .animate-gradient {
@@ -77,8 +89,15 @@ body {
 
 /* Floating animation */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .animate-float {
@@ -87,32 +106,66 @@ body {
 
 /* Slide in animations */
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.animate-slide-in-left { animation: slideInLeft 0.5s ease forwards; }
-.animate-slide-in-right { animation: slideInRight 0.5s ease forwards; }
-.animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; }
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s ease forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease forwards;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease forwards;
+}
 
 /* Shimmer effect */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -123,7 +176,7 @@ body {
 }
 
 .glow-on-hover:hover {
-  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 8px 30px rgba(0,0,0,0.3);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4), 0 8px 30px rgba(0, 0, 0, 0.3);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
 }
 
@@ -142,9 +195,11 @@ body {
 .btn-premium::after {
   content: '';
   position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s ease;
 }
 
@@ -160,7 +215,7 @@ body {
 /* Input premium style */
 .input-premium {
   transition: all 0.3s ease;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .input-premium:focus {
@@ -171,8 +226,15 @@ body {
 
 /* Message bubble animations */
 @keyframes messageIn {
-  from { opacity: 0; transform: scale(0.92) translateY(8px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .message-animate {
@@ -181,8 +243,17 @@ body {
 
 /* Online status pulse */
 @keyframes onlinePulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
-  50% { opacity: 0.8; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0);
+  }
 }
 
 .online-pulse {
@@ -191,9 +262,19 @@ body {
 
 /* Auth page patterns */
 @keyframes patternFloat {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-8px) rotate(1deg); }
-  66% { transform: translateY(4px) rotate(-1deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  33% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+
+  66% {
+    transform: translateY(4px) rotate(-1deg);
+  }
 }
 
 .pattern-card {
@@ -254,9 +335,11 @@ body {
   0% {
     background-color: rgba(99, 102, 241, 0.3);
   }
+
   40% {
     background-color: rgba(99, 102, 241, 0.4);
   }
+
   100% {
     background-color: transparent;
   }
@@ -269,12 +352,14 @@ body {
     box-shadow: 0 0 25px rgba(99, 102, 241, 0.85), 0 0 8px #6366f1 !important;
     transform: scale(1.03);
   }
+
   40% {
     background-color: #4f46e5 !important;
     color: #ffffff !important;
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.5) !important;
     transform: scale(1.015);
   }
+
   100% {
     transform: scale(1);
   }

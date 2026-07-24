@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { io } from "socket.io-client";
 import { useCallStore } from "./useCallStore.js";
 import { useChatStore } from "./useChatStore.js";
+import { SOCKET_EVENTS } from "../constants/events.js";
 import { pushNotifications } from "../utils/pushNotifications.js";
 
 const getBackendUrl = () => {
@@ -234,24 +235,28 @@ const useAuthStore = create((set, get) => ({
 
     const targetUrl = BASE_URL.replace(/\/+$/, "");
 
+    const token = Cookies.get("token") || Cookies.get("accessToken");
+
     const socket = io(targetUrl, {
       withCredentials: true,
       auth: {
+        token: token,
         userId: String(userId),
       },
       query: {
+        token: token,
         userId: String(userId),
       },
     });
 
     socket.connect();
 
-    socket.on("connect", () => {
+    socket.on(SOCKET_EVENTS.CONNECT, () => {
       useCallStore.getState().initCallListeners();
       useChatStore.getState().subscribeToMessages();
     });
 
-    socket.on("getOnlineUsers", (userIds) => {
+    socket.on(SOCKET_EVENTS.GET_ONLINE_USERS, (userIds) => {
       const stringUserIds = Array.isArray(userIds) ? userIds.map((id) => String(id)) : [];
       set({ onlineUsers: stringUserIds });
     });

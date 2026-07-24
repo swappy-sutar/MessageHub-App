@@ -3,9 +3,11 @@ import { toast } from "react-hot-toast";
 import { axiosInstance } from "../utils/axios";
 import Cookies from "js-cookie";
 import { useAuthStore } from "./useAuthStore";
-import CryptoJS from "crypto-js";
+import { SOCKET_EVENTS } from "../constants/events";
 import { ringtone } from "../utils/ringtone";
 import { pushNotifications } from "../utils/pushNotifications";
+
+import CryptoJS from "crypto-js";
 
 const secretKey = import.meta.env.VITE_API_ENCRYPTION_KEY;
 
@@ -16,8 +18,7 @@ const LEGACY_KEYS = [
 ];
 
 const decryptMessageText = (ciphertext) => {
-  if (!ciphertext) return "";
-  if (typeof ciphertext !== "string") return ciphertext;
+  if (!ciphertext || typeof ciphertext !== "string") return ciphertext || "";
   if (!ciphertext.startsWith("U2FsdGVkX1")) {
     return ciphertext;
   }
@@ -37,39 +38,23 @@ const decryptMessageText = (ciphertext) => {
 };
 
 export const useChatStore = create((set, get) => ({
-  messages: [],
+  // Normalized Message Store State
+  messagesById: {}, // { [messageId]: MessageObject }
+  messageIds: [],   // Array of message IDs in order
+  messages: [],     // Derived array for components
+
   users: [],
   selectedUser: null,
   isUserLoading: false,
   isMessagesLoading: false,
-  lastSeenSeqMap: {}, // { [conversationId]: number }
+  hasMoreMessages: true,
+  lastSeenSeqMap: {},
+  unreadCounts: {},
+  typingUsers: {},
+  searchResults: [],
+  pinnedMessages: [],
 
-  syncDeltaMessages: async (conversationId) => {
-    const lastSeq = get().lastSeenSeqMap[conversationId] || 0;
-    const token = Cookies.get("token");
-    try {
-      const res = await axiosInstance.get(`/messages/sync?conversationId=${conversationId}&lastSequenceId=${lastSeq}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
-
-      const newMsgs = (res.data.data || []).map((msg) => ({
-        ...msg,
-        text: decryptMessageText(msg.text),
-      }));
-
-      if (newMsgs.length > 0) {
-        const maxSeq = Math.max(...newMsgs.map((m) => m.sequenceId || 0));
-        set((state) => ({
-          messages: [...state.messages, ...newMsgs],
-          lastSeenSeqMap: { ...state.lastSeenSeqMap, [conversationId]: maxSeq },
-        }));
-      }
-    } catch (error) {
-      console.warn("Delta sync failed:", error);
-    }
-  },
-
+  // Setters & UI drawer toggles
   setSettingsOpen: (isOpen) =>
     set({ isSettingsOpen: isOpen, isSearchOpen: false, isContactInfoOpen: false }),
 
@@ -86,7 +71,7 @@ export const useChatStore = create((set, get) => ({
   toggleSearch: () =>
     set((state) => ({
       isSearchOpen: !state.isSearchOpen,
-      isContactInfoOpen: !state.isSearchOpen ? false : state.isContactInfoOpen,
+      isContactInfoOpen: !state.isSearchOpen ? false : state.state.isContactInfoOpen,
     })),
 
   setContactInfoOpen: (isOpen) =>
@@ -104,11 +89,7 @@ export const useChatStore = create((set, get) => ({
   getUsers: async () => {
     set({ isUserLoading: true });
     try {
-      const token = Cookies.get("token");
-      const response = await axiosInstance.get("/messages/users", {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
+      const response = await axiosInstance.get("/messages/users");
       set({ users: response.data.data, isUserLoading: false });
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -120,25 +101,29 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
-      const token = Cookies.get("token");
-      const response = await axiosInstance.get(`/messages/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
+      const response = await axiosInstance.get(`/messages/${userId}`);
+      const rawMessages = response.data?.data || [];
+
+      const byId = {};
+      const ids = [];
+
+      rawMessages.forEach((msg) => {
+        const decryptedMsg = { ...msg, text: decryptMessageText(msg.text) };
+        byId[msg._id] = decryptedMsg;
+        ids.push(msg._id);
       });
 
-      const encryptedMessages = response.data?.data || [];
+      set({
+        messagesById: byId,
+        messageIds: ids,
+        messages: Object.values(byId),
+      });
 
-      const decryptedMessages = encryptedMessages.map((msg) => ({
-        ...msg,
-        text: decryptMessageText(msg.text),
-      }));
-
-      set({ messages: decryptedMessages });
       get().getPinnedMessages(userId);
 
       const socket = useAuthStore.getState().socket;
       if (socket && socket.connected) {
-        socket.emit("markMessagesRead", { senderId: userId });
+        socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: userId });
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load messages");
@@ -157,6 +142,7 @@ export const useChatStore = create((set, get) => ({
       isContactInfoOpen: false,
       isSearchOpen: false,
     });
+
     if (selectedUser?._id) {
       const uId = String(selectedUser._id);
       set((state) => ({
@@ -168,14 +154,13 @@ export const useChatStore = create((set, get) => ({
 
       const socket = useAuthStore.getState().socket;
       if (socket && socket.connected) {
-        socket.emit("markMessagesRead", { senderId: selectedUser._id });
+        socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: selectedUser._id });
       }
     }
   },
 
   sendMessage: async (formData) => {
-    const token = Cookies.get("token");
-    const { selectedUser, messages, users, replyingTo } = get();
+    const { selectedUser, users, replyingTo } = get();
 
     if (replyingTo) {
       const authUser = useAuthStore.getState().authUser;
@@ -199,10 +184,8 @@ export const useChatStore = create((set, get) => ({
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "multipart/form-data",
           },
-          withCredentials: true,
         }
       );
 
@@ -226,10 +209,16 @@ export const useChatStore = create((set, get) => ({
           : u
       );
 
-      set({
-        messages: [...messages, newMsg],
-        users: updatedUsers,
-        replyingTo: null,
+      set((state) => {
+        const nextById = { ...state.messagesById, [newMsg._id]: newMsg };
+        const nextIds = [...state.messageIds, newMsg._id];
+        return {
+          messagesById: nextById,
+          messageIds: nextIds,
+          messages: Object.values(nextById),
+          users: updatedUsers,
+          replyingTo: null,
+        };
       });
 
       ringtone.playSentMessageTone();
@@ -240,25 +229,20 @@ export const useChatStore = create((set, get) => ({
   },
 
   editMessage: async (messageId, newText) => {
-    const token = Cookies.get("token");
     try {
-      const res = await axiosInstance.put(
-        `/messages/edit/${messageId}`,
-        { text: newText },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        }
-      );
+      const res = await axiosInstance.put(`/messages/edit/${messageId}`, { text: newText });
 
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId
-            ? { ...m, text: newText, isEdited: true, editedAt: new Date() }
-            : m
-        ),
-        editingMessage: null,
-      }));
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, text: newText, isEdited: true, editedAt: new Date() };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+          editingMessage: null,
+        };
+      });
 
       toast.success("Message edited");
       return res.data;
@@ -269,47 +253,38 @@ export const useChatStore = create((set, get) => ({
   },
 
   addReaction: async (messageId, emoji) => {
-    const token = Cookies.get("token");
     try {
-      const res = await axiosInstance.post(
-        `/messages/reaction/${messageId}`,
-        { emoji },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        }
-      );
-
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId ? { ...m, reactions: res.data.data } : m
-        ),
-      }));
+      const res = await axiosInstance.post(`/messages/reaction/${messageId}`, { emoji });
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, reactions: res.data.data };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to add reaction");
     }
   },
 
   pinMessage: async (messageId) => {
-    const token = Cookies.get("token");
     try {
-      const res = await axiosInstance.post(
-        `/messages/pin/${messageId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true,
-        }
-      );
-
+      const res = await axiosInstance.post(`/messages/pin/${messageId}`, {});
       const updatedMsg = res.data.data;
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId
-            ? { ...m, pinnedAt: updatedMsg.pinnedAt, pinnedBy: updatedMsg.pinnedBy }
-            : m
-        ),
-      }));
+
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, pinnedAt: updatedMsg.pinnedAt, pinnedBy: updatedMsg.pinnedBy };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
 
       const selectedUser = get().selectedUser;
       if (selectedUser) get().getPinnedMessages(selectedUser._id);
@@ -321,18 +296,12 @@ export const useChatStore = create((set, get) => ({
   },
 
   getPinnedMessages: async (userId) => {
-    const token = Cookies.get("token");
     try {
-      const res = await axiosInstance.get(`/messages/pinned/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
-
+      const res = await axiosInstance.get(`/messages/pinned/${userId}`);
       const decrypted = (res.data.data || []).map((m) => ({
         ...m,
         text: decryptMessageText(m.text),
       }));
-
       set({ pinnedMessages: decrypted });
     } catch (error) {
       console.error("Error fetching pinned messages:", error);
@@ -347,13 +316,8 @@ export const useChatStore = create((set, get) => ({
     }
 
     set({ isSearching: true });
-    const token = Cookies.get("token");
     try {
-      const res = await axiosInstance.get(`/messages/search/${selectedUser._id}?q=${encodeURIComponent(query)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
-      });
-
+      const res = await axiosInstance.get(`/messages/search/${selectedUser._id}?q=${encodeURIComponent(query)}`);
       const decrypted = (res.data.data || []).map((m) => ({
         ...m,
         text: decryptMessageText(m.text),
@@ -366,68 +330,41 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  forwardMessage: async (messageToForward, targetUserId) => {
-    const token = Cookies.get("token");
-    const formData = new FormData();
-
-    if (messageToForward.text) {
-      formData.append("text", messageToForward.text);
-    }
-    if (messageToForward.image) {
-      formData.append("image", messageToForward.image);
-    }
-    formData.append("isForwarded", "true");
-
-    try {
-      const res = await axiosInstance.post(
-        `/messages/send/${targetUserId}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-          withCredentials: true,
-        }
-      );
-
-      const newMsg = res.data.data;
-      newMsg.text = decryptMessageText(newMsg.text);
-
-      const selectedUser = get().selectedUser;
-      if (selectedUser && String(selectedUser._id) === String(targetUserId)) {
-        set({ messages: [...get().messages, newMsg] });
-      }
-
-      ringtone.playSentMessageTone();
-      return newMsg;
-    } catch (error) {
-      console.error("Error forwarding message:", error);
-      throw error;
-    }
-  },
-
   deleteMessage: async (messageId, deleteType) => {
-    const token = Cookies.get("token");
     try {
       const res = await axiosInstance.delete(`/messages/delete/${messageId}`, {
         data: { deleteType },
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
       });
 
       if (deleteType === "everyone") {
-        set((state) => ({
-          messages: state.messages.map((m) =>
-            m._id === messageId
-              ? { ...m, text: "", image: "", video: "", document: null, deletedForEveryone: true }
-              : m
-          ),
-        }));
+        set((state) => {
+          const existing = state.messagesById[messageId];
+          if (!existing) return state;
+          const updated = {
+            ...existing,
+            text: "",
+            image: "",
+            video: "",
+            document: null,
+            deletedForEveryone: true,
+          };
+          const nextById = { ...state.messagesById, [messageId]: updated };
+          return {
+            messagesById: nextById,
+            messages: Object.values(nextById),
+          };
+        });
       } else {
-        set((state) => ({
-          messages: state.messages.filter((m) => m._id !== messageId),
-        }));
+        set((state) => {
+          const nextById = { ...state.messagesById };
+          delete nextById[messageId];
+          const nextIds = state.messageIds.filter((id) => id !== messageId);
+          return {
+            messagesById: nextById,
+            messageIds: nextIds,
+            messages: Object.values(nextById),
+          };
+        });
       }
 
       return res.data;
@@ -441,17 +378,10 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
-    socket.off("newMessage");
-    socket.off("messagesRead");
-    socket.off("messagesDelivered");
-    socket.off("messageEdited");
-    socket.off("reactionUpdated");
-    socket.off("messagePinned");
-    socket.off("messageDeletedForEveryone");
-    socket.off("userTyping");
-    socket.off("userStoppedTyping");
+    // Clean up previous event listeners before binding
+    get().unsubscribeFromMessages();
 
-    socket.on("newMessage", (newMessage) => {
+    socket.on(SOCKET_EVENTS.NEW_MESSAGE, (newMessage) => {
       const currentSelectedUser = get().selectedUser;
       const senderId = String(newMessage.senderId);
 
@@ -468,7 +398,6 @@ export const useChatStore = create((set, get) => ({
       }
 
       const msgTime = decryptedMsg.createdAt;
-
       const updatedUsers = get().users.map((u) =>
         String(u._id) === senderId
           ? {
@@ -480,18 +409,16 @@ export const useChatStore = create((set, get) => ({
       );
 
       set({ users: updatedUsers });
-
       ringtone.playIncomingMessageTone();
 
       const senderUser = get().users.find((u) => String(u._id) === senderId);
       const senderName = senderUser ? `${senderUser.firstName} ${senderUser.lastName}` : "Someone";
-      const senderAvatar = senderUser?.profilePic || "/avatar.png";
 
       if (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== senderId) {
         pushNotifications.sendDesktopNotification({
           title: `💬 Message from ${senderName}`,
           body: msgPreview || "Sent an attachment",
-          icon: senderAvatar,
+          icon: senderUser?.profilePic || "/avatar.png",
           tag: `msg-${senderId}`,
           onClick: () => {
             if (senderUser) get().setSelectedUser(senderUser);
@@ -500,11 +427,17 @@ export const useChatStore = create((set, get) => ({
       }
 
       if (currentSelectedUser && String(currentSelectedUser._id) === senderId) {
-        set({
-          messages: [...get().messages, decryptedMsg],
+        set((state) => {
+          const nextById = { ...state.messagesById, [decryptedMsg._id]: decryptedMsg };
+          const nextIds = [...state.messageIds, decryptedMsg._id];
+          return {
+            messagesById: nextById,
+            messageIds: nextIds,
+            messages: Object.values(nextById),
+          };
         });
 
-        socket.emit("markMessagesRead", { senderId: senderId });
+        socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: senderId });
       } else {
         set((state) => ({
           unreadCounts: {
@@ -513,84 +446,113 @@ export const useChatStore = create((set, get) => ({
           },
         }));
 
-        toast(`${senderName}: ${msgPreview}`, {
-          duration: 4000,
-          icon: "💬",
+        toast(`${senderName}: ${msgPreview}`, { duration: 4000, icon: "💬" });
+      }
+    });
+
+    socket.on(SOCKET_EVENTS.MESSAGES_READ, ({ byUserId }) => {
+      const currentSelectedUser = get().selectedUser;
+      if (currentSelectedUser && String(currentSelectedUser._id) === String(byUserId)) {
+        set((state) => {
+          const nextById = {};
+          Object.keys(state.messagesById).forEach((id) => {
+            nextById[id] = { ...state.messagesById[id], isRead: true, isDelivered: true, status: "read" };
+          });
+          return {
+            messagesById: nextById,
+            messages: Object.values(nextById),
+          };
         });
       }
     });
 
-    socket.on("messagesRead", ({ byUserId }) => {
-      const currentSelectedUser = get().selectedUser;
-      if (currentSelectedUser && String(currentSelectedUser._id) === String(byUserId)) {
-        set((state) => ({
-          messages: state.messages.map((m) => ({
-            ...m,
-            isRead: true,
-            isDelivered: true,
-            status: "read",
-          })),
-        }));
-      }
-    });
-
-    socket.on("messagesDelivered", ({ toUserId }) => {
+    socket.on(SOCKET_EVENTS.MESSAGES_DELIVERED, ({ toUserId }) => {
       const currentSelectedUser = get().selectedUser;
       if (currentSelectedUser && String(currentSelectedUser._id) === String(toUserId)) {
-        set((state) => ({
-          messages: state.messages.map((m) => ({
-            ...m,
-            isDelivered: true,
-            status: m.isRead ? "read" : "delivered",
-          })),
-        }));
+        set((state) => {
+          const nextById = {};
+          Object.keys(state.messagesById).forEach((id) => {
+            const m = state.messagesById[id];
+            nextById[id] = { ...m, isDelivered: true, status: m.isRead ? "read" : "delivered" };
+          });
+          return {
+            messagesById: nextById,
+            messages: Object.values(nextById),
+          };
+        });
       }
     });
 
-    socket.on("messageEdited", ({ messageId, text }) => {
+    socket.on(SOCKET_EVENTS.MESSAGE_EDITED, ({ messageId, text }) => {
       const decrypted = decryptMessageText(text);
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId ? { ...m, text: decrypted, isEdited: true } : m
-        ),
-      }));
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, text: decrypted, isEdited: true };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
     });
 
-    socket.on("reactionUpdated", ({ messageId, reactions }) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId ? { ...m, reactions } : m
-        ),
-      }));
+    socket.on(SOCKET_EVENTS.REACTION_UPDATED, ({ messageId, reactions }) => {
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, reactions };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
     });
 
-    socket.on("messagePinned", ({ messageId, pinnedAt, pinnedBy }) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId ? { ...m, pinnedAt, pinnedBy } : m
-        ),
-      }));
+    socket.on(SOCKET_EVENTS.MESSAGE_PINNED, ({ messageId, pinnedAt, pinnedBy }) => {
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = { ...existing, pinnedAt, pinnedBy };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
+
       const selectedUser = get().selectedUser;
       if (selectedUser) get().getPinnedMessages(selectedUser._id);
     });
 
-    socket.on("messageDeletedForEveryone", ({ messageId }) => {
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m._id === messageId
-            ? { ...m, text: "", image: "", video: "", document: null, deletedForEveryone: true }
-            : m
-        ),
-      }));
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, ({ messageId }) => {
+      set((state) => {
+        const existing = state.messagesById[messageId];
+        if (!existing) return state;
+        const updated = {
+          ...existing,
+          text: "",
+          image: "",
+          video: "",
+          document: null,
+          deletedForEveryone: true,
+        };
+        const nextById = { ...state.messagesById, [messageId]: updated };
+        return {
+          messagesById: nextById,
+          messages: Object.values(nextById),
+        };
+      });
     });
 
-    socket.on("userTyping", ({ from }) => {
+    socket.on(SOCKET_EVENTS.USER_TYPING, ({ from }) => {
       set((state) => ({
         typingUsers: { ...state.typingUsers, [String(from)]: true },
       }));
     });
 
-    socket.on("userStoppedTyping", ({ from }) => {
+    socket.on(SOCKET_EVENTS.USER_STOPPED_TYPING, ({ from }) => {
       set((state) => ({
         typingUsers: { ...state.typingUsers, [String(from)]: false },
       }));
@@ -600,15 +562,15 @@ export const useChatStore = create((set, get) => ({
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (socket) {
-      socket.off("newMessage");
-      socket.off("messagesRead");
-      socket.off("messagesDelivered");
-      socket.off("messageEdited");
-      socket.off("reactionUpdated");
-      socket.off("messagePinned");
-      socket.off("messageDeletedForEveryone");
-      socket.off("userTyping");
-      socket.off("userStoppedTyping");
+      socket.off(SOCKET_EVENTS.NEW_MESSAGE);
+      socket.off(SOCKET_EVENTS.MESSAGES_READ);
+      socket.off(SOCKET_EVENTS.MESSAGES_DELIVERED);
+      socket.off(SOCKET_EVENTS.MESSAGE_EDITED);
+      socket.off(SOCKET_EVENTS.REACTION_UPDATED);
+      socket.off(SOCKET_EVENTS.MESSAGE_PINNED);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETED);
+      socket.off(SOCKET_EVENTS.USER_TYPING);
+      socket.off(SOCKET_EVENTS.USER_STOPPED_TYPING);
     }
   },
 }));

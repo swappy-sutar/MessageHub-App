@@ -6,7 +6,11 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { errorHandler } from "./Middlewares/error.middleware.js";
 
+import cookieParser from "cookie-parser";
+
 const app = express();
+
+app.use(cookieParser());
 
 // 1. Helmet Security Middleware
 app.use(
@@ -57,7 +61,7 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
       callback(null, true);
     } else {
-      callback(null, true);
+      callback(new Error("CORS Policy Error: Origin not allowed"), false);
     }
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

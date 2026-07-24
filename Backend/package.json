@@ -13,8 +13,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.6.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^16.5.0",
@@ -22,6 +24,7 @@
     "express-fileupload": "^1.5.1",
     "express-rate-limit": "^8.6.0",
     "helmet": "^8.3.0",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
     "nodemon": "^3.1.9",

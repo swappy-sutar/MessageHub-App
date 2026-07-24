@@ -80,9 +80,8 @@ const GoogleOAuthButton = () => {
       {/* Official Google Native Render Container */}
       <div
         id="google-signin-btn-container"
-        className={`w-full flex justify-center items-center min-h-[44px] overflow-hidden rounded-full ${
-          isGsiRendered ? "block" : "hidden"
-        }`}
+        className={`w-full flex justify-center items-center min-h-[44px] overflow-hidden rounded-full ${isGsiRendered ? "block" : "hidden"
+          }`}
       />
 
       {/* Styled Fallback Google OAuth Button */}

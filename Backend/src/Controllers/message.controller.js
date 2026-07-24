@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Message } from "../Models/message.model.js";
 import { User } from "../Models/user.model.js";
 import { ImageUploadCloudinary, MediaUploadCloudinary } from "../Utils/uploadToCloudinary.js";
@@ -64,42 +65,62 @@ const getUsersForSidebar = async (req, res) => {
       _id: { $in: Array.from(chatUserIds) },
     }).select("-password");
 
-    const usersWithLastMessage = await Promise.all(
-      users.map(async (u) => {
-        const userObj = u.toObject();
+    // Batch fetch latest message for all chat partners in 1 single aggregation query (Fixes N+1 problem)
+    const targetUserObjectIds = Array.from(chatUserIds).map((id) => new mongoose.Types.ObjectId(id));
 
-        const lastMsg = await Message.findOne({
+    const lastMessages = await Message.aggregate([
+      {
+        $match: {
           $or: [
-            { senderId: loggedInUserId, receiverId: u._id },
-            { senderId: u._id, receiverId: loggedInUserId },
+            { senderId: loggedInUserId, receiverId: { $in: targetUserObjectIds } },
+            { senderId: { $in: targetUserObjectIds }, receiverId: loggedInUserId },
           ],
           deletedFor: { $ne: loggedInUserId },
-        }).sort({ createdAt: -1 });
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: {
+            $cond: [{ $eq: ["$senderId", loggedInUserId] }, "$receiverId", "$senderId"],
+          },
+          lastMsg: { $first: "$$ROOT" },
+        },
+      },
+    ]);
 
-        let lastMessageText = "";
-        let lastMessageTime = null;
+    const lastMsgMap = new Map();
+    lastMessages.forEach((item) => {
+      if (item._id) lastMsgMap.set(item._id.toString(), item.lastMsg);
+    });
 
-        if (lastMsg) {
-          if (lastMsg.deletedForEveryone) {
-            lastMessageText = "🚫 This message was deleted";
-          } else if (lastMsg.text) {
-            lastMessageText = decryptTextHelper(lastMsg.text);
-          } else if (lastMsg.image) {
-            lastMessageText = "📷 Photo";
-          } else if (lastMsg.video) {
-            lastMessageText = "🎥 Video";
-          } else if (lastMsg.document) {
-            lastMessageText = `📄 ${lastMsg.document.name || "Document"}`;
-          }
-          lastMessageTime = lastMsg.createdAt;
+    const usersWithLastMessage = users.map((u) => {
+      const userObj = u.toObject();
+      const lastMsg = lastMsgMap.get(u._id.toString());
+
+      let lastMessageText = "";
+      let lastMessageTime = null;
+
+      if (lastMsg) {
+        if (lastMsg.deletedForEveryone) {
+          lastMessageText = "🚫 This message was deleted";
+        } else if (lastMsg.text) {
+          lastMessageText = decryptTextHelper(lastMsg.text);
+        } else if (lastMsg.image) {
+          lastMessageText = "📷 Photo";
+        } else if (lastMsg.video) {
+          lastMessageText = "🎥 Video";
+        } else if (lastMsg.document) {
+          lastMessageText = `📄 ${lastMsg.document.name || "Document"}`;
         }
+        lastMessageTime = lastMsg.createdAt;
+      }
 
-        userObj.lastMessageText = lastMessageText;
-        userObj.lastMessageTime = lastMessageTime;
+      userObj.lastMessageText = lastMessageText;
+      userObj.lastMessageTime = lastMessageTime;
 
-        return userObj;
-      })
-    );
+      return userObj;
+    });
 
     return res.status(200).json({
       success: true,

@@ -13,6 +13,7 @@ import CryptoJS from "crypto-js";
 
 const LEGACY_KEYS = [
   process.env.ENCRYPTION_KEY,
+  "e420b6990215c371d0c267e077377ca31b2684e2bf8a0bfab83ad7a362607b3c",
   "a9d8f7e6c5b4a39281706f5e4d3c2b1a0987654321fedcba0987654321abcdef",
   "messagehub_secret_encryption_key_2026",
   "secretKey",

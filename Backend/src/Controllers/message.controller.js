@@ -273,8 +273,13 @@ const sendMessages = async (req, res) => {
       replyTo: replyTo,
     });
 
-    if (receiverSocketId) {
-      emitToUser(receiverId, "newMessage", newMessage);
+    // Broadcast message to all active sockets of receiver
+    emitToUser(receiverId, "newMessage", newMessage);
+
+    // Broadcast message to sender's other devices (PC, Laptop, Web) for multi-device sync
+    emitToUser(senderId, "newMessage", newMessage);
+
+    if (isDelivered) {
       emitToUser(senderId, "messageDelivered", { messageId: newMessage._id, deliveredAt: now });
     }
 

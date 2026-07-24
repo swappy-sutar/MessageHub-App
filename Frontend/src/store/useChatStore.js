@@ -384,8 +384,11 @@ export const useChatStore = create((set, get) => ({
     get().unsubscribeFromMessages();
 
     socket.on(SOCKET_EVENTS.NEW_MESSAGE, (newMessage) => {
+      const authUserId = useAuthStore.getState().authUser?.data?._id || useAuthStore.getState().authUser?._id;
       const currentSelectedUser = get().selectedUser;
-      const senderId = String(newMessage.senderId);
+
+      const isMyOwnMessage = String(newMessage.senderId) === String(authUserId);
+      const contactId = isMyOwnMessage ? String(newMessage.receiverId) : String(newMessage.senderId);
 
       const decryptedMsg = {
         ...newMessage,
@@ -401,7 +404,7 @@ export const useChatStore = create((set, get) => ({
 
       const msgTime = decryptedMsg.createdAt;
       const updatedUsers = get().users.map((u) =>
-        String(u._id) === senderId
+        String(u._id) === contactId
           ? {
               ...u,
               lastMessageText: msgPreview,
@@ -411,27 +414,34 @@ export const useChatStore = create((set, get) => ({
       );
 
       set({ users: updatedUsers });
-      ringtone.playIncomingMessageTone();
 
-      const senderUser = get().users.find((u) => String(u._id) === senderId);
-      const senderName = senderUser ? `${senderUser.firstName} ${senderUser.lastName}` : "Someone";
+      if (isMyOwnMessage) {
+        ringtone.playSentMessageTone();
+      } else {
+        ringtone.playIncomingMessageTone();
+      }
 
-      if (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== senderId) {
+      const contactUser = get().users.find((u) => String(u._id) === contactId);
+      const contactName = contactUser ? `${contactUser.firstName} ${contactUser.lastName}` : "Someone";
+
+      if (!isMyOwnMessage && (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== contactId)) {
         pushNotifications.sendDesktopNotification({
-          title: `💬 Message from ${senderName}`,
+          title: `💬 Message from ${contactName}`,
           body: msgPreview || "Sent an attachment",
-          icon: senderUser?.profilePic || "/avatar.png",
-          tag: `msg-${senderId}`,
+          icon: contactUser?.profilePic || "/avatar.png",
+          tag: `msg-${contactId}`,
           onClick: () => {
-            if (senderUser) get().setSelectedUser(senderUser);
+            if (contactUser) get().setSelectedUser(contactUser);
           },
         });
       }
 
-      if (currentSelectedUser && String(currentSelectedUser._id) === senderId) {
+      if (currentSelectedUser && String(currentSelectedUser._id) === contactId) {
         set((state) => {
           const nextById = { ...state.messagesById, [decryptedMsg._id]: decryptedMsg };
-          const nextIds = [...state.messageIds, decryptedMsg._id];
+          const nextIds = state.messageIds.includes(decryptedMsg._id)
+            ? state.messageIds
+            : [...state.messageIds, decryptedMsg._id];
           return {
             messagesById: nextById,
             messageIds: nextIds,
@@ -439,16 +449,18 @@ export const useChatStore = create((set, get) => ({
           };
         });
 
-        socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: senderId });
-      } else {
+        if (!isMyOwnMessage) {
+          socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: contactId });
+        }
+      } else if (!isMyOwnMessage) {
         set((state) => ({
           unreadCounts: {
             ...state.unreadCounts,
-            [senderId]: (state.unreadCounts[senderId] || 0) + 1,
+            [contactId]: (state.unreadCounts[contactId] || 0) + 1,
           },
         }));
 
-        toast(`${senderName}: ${msgPreview}`, { duration: 4000, icon: "💬" });
+        toast(`${contactName}: ${msgPreview}`, { duration: 4000, icon: "💬" });
       }
     });
 

@@ -569,15 +569,15 @@ function ChatContainer() {
     <div
       style={{
         backgroundColor: isCustomWallpaper ? wallpaper : undefined,
-        backgroundImage: showDoodles
-          ? `url(${whatsappBg}), radial-gradient(rgba(128, 128, 128, 0.2) 1px, transparent 1px)`
+        backgroundImage: isCustomWallpaper && showDoodles
+          ? `url(${whatsappBg}), radial-gradient(rgba(128, 128, 128, 0.15) 1px, transparent 1px)`
           : "none",
         backgroundRepeat: "repeat, repeat",
         backgroundSize: "440px 440px, 14px 14px",
         backgroundAttachment: "local",
       }}
       className={`flex-1 flex flex-col overflow-hidden transition-colors duration-300 relative w-full h-full ${
-        !isCustomWallpaper ? "bg-base-200/90 text-base-content" : ""
+        !isCustomWallpaper ? "bg-base-200 text-base-content" : ""
       }`}
     >
       <ChatHeader />

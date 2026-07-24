@@ -352,6 +352,16 @@ function Sidebar() {
         )}
       </div>
 
+      {/* Floating Action Button (FAB) for Invite Friend */}
+      <button
+        type="button"
+        onClick={() => setIsInviteModalOpen(true)}
+        className="fixed bottom-20 right-5 sm:bottom-6 sm:right-6 lg:absolute lg:bottom-6 lg:right-6 z-40 size-13 sm:size-14 rounded-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white shadow-2xl flex items-center justify-center transition-all duration-200 cursor-pointer ring-4 ring-emerald-500/20 group"
+        title="Invite Friend"
+      >
+        <Plus className="size-7 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
+      </button>
+
       {/* Invite Friend Modal */}
       <InviteFriendModal
         isOpen={isInviteModalOpen}

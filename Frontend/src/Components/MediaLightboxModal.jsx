@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Download,
@@ -144,11 +145,11 @@ const MediaLightboxModal = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-[#0b141a]/95 backdrop-blur-2xl flex flex-col justify-between select-none animate-fade-in text-white overflow-hidden font-sans">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-[#0b141a] w-screen h-screen flex flex-col justify-between select-none animate-fade-in text-white overflow-hidden font-sans">
 
       {/* ══════════════════════════════════════════════════════════════
-          1. TOP CONTROL BAR TOOLBAR (Matching WhatsApp Web Screenshot)
+          1. TOP CONTROL BAR TOOLBAR (Full Width Above Everything)
       ══════════════════════════════════════════════════════════════ */}
       <div className="h-16 px-4 sm:px-6 bg-[#111b21] border-b border-white/10 flex items-center justify-between flex-shrink-0 z-30 shadow-md">
         {/* Left: Sender Avatar, Name, Timestamp */}
@@ -350,7 +351,7 @@ const MediaLightboxModal = ({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════
-          3. BOTTOM THUMBNAIL CAROUSEL STRIP (Matching Image 3)
+          3. BOTTOM THUMBNAIL CAROUSEL STRIP
       ══════════════════════════════════════════════════════════════ */}
       {allMediaMessages.length > 0 && (
         <div className="h-20 bg-[#0f1418] border-t border-white/10 flex items-center justify-center px-4 py-2 z-20 flex-shrink-0">
@@ -408,7 +409,8 @@ const MediaLightboxModal = ({
         </div>
       )}
 
-    </div>
+    </div>,
+    document.body
   );
 };
 

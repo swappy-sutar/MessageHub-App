@@ -151,13 +151,13 @@ const MediaLightboxModal = ({
       {/* ══════════════════════════════════════════════════════════════
           1. TOP CONTROL BAR TOOLBAR (Full Width Above Everything)
       ══════════════════════════════════════════════════════════════ */}
-      <div className="h-16 px-4 sm:px-6 bg-[#111b21] border-b border-white/10 flex items-center justify-between flex-shrink-0 z-30 shadow-md">
+      <div className="h-16 px-3 sm:px-6 bg-[#111b21] border-b border-white/10 flex items-center justify-between flex-shrink-0 z-30 shadow-md gap-2 w-full">
         {/* Left: Sender Avatar, Name, Timestamp */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-shrink">
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors cursor-pointer flex-shrink-0"
             title="Close viewer"
           >
             <ArrowLeft className="size-5" />
@@ -166,83 +166,83 @@ const MediaLightboxModal = ({
           <img
             src={senderPic}
             alt={senderName}
-            className="size-9 rounded-full object-cover border border-white/20"
+            className="size-9 rounded-full object-cover border border-white/20 flex-shrink-0"
           />
 
-          <div className="flex flex-col">
-            <span className="font-bold text-sm text-white leading-snug">
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-xs sm:text-sm text-white leading-tight truncate whitespace-nowrap">
               {senderName}
             </span>
-            <span className="text-[11px] text-white/60 font-mono">
+            <span className="text-[10px] sm:text-[11px] text-white/60 font-mono whitespace-nowrap truncate">
               {formattedDate}
             </span>
           </div>
         </div>
 
         {/* Right Toolbar Controls: Zoom, Rotate, Star, Pin, Reaction, Forward, Download, Close */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-0.5 sm:gap-1.5 flex-shrink-0">
           {/* Zoom In */}
           <button
             type="button"
             onClick={handleZoomIn}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Zoom in (+)"
           >
-            <ZoomIn className="size-4.5" />
+            <ZoomIn className="size-4 sm:size-4.5" />
           </button>
 
           {/* Zoom Out */}
           <button
             type="button"
             onClick={handleZoomOut}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Zoom out (-)"
           >
-            <ZoomOut className="size-4.5" />
+            <ZoomOut className="size-4 sm:size-4.5" />
           </button>
 
           {/* Rotate */}
           <button
             type="button"
             onClick={handleRotate}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Rotate"
           >
-            <RotateCw className="size-4.5" />
+            <RotateCw className="size-4 sm:size-4.5" />
           </button>
 
-          <div className="h-5 w-[1px] bg-white/15 mx-1" />
+          <div className="h-4 sm:h-5 w-[1px] bg-white/15 mx-0.5 sm:mx-1" />
 
           {/* Star */}
           <button
             type="button"
             onClick={() => toast("Starred media")}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Star message"
           >
-            <Star className="size-4.5" />
+            <Star className="size-4 sm:size-4.5" />
           </button>
 
           {/* Pin */}
           <button
             type="button"
             onClick={() => pinMessage(currentMedia._id)}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Pin message"
           >
-            <Pin className="size-4.5" />
+            <Pin className="size-4 sm:size-4.5" />
           </button>
 
           {/* Emoji Reactions Toggle */}
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer ${
+            className={`p-1.5 sm:p-2 rounded-full hover:bg-white/10 transition-colors cursor-pointer ${
               showEmojiPicker ? "text-emerald-400 bg-white/10" : "text-white/70 hover:text-white"
             }`}
             title="React with emoji"
           >
-            <Smile className="size-4.5" />
+            <Smile className="size-4 sm:size-4.5" />
           </button>
 
           {/* Forward */}
@@ -252,29 +252,29 @@ const MediaLightboxModal = ({
               if (onForward) onForward(currentMedia);
               onClose();
             }}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Forward media"
           >
-            <CornerUpRight className="size-4.5" />
+            <CornerUpRight className="size-4 sm:size-4.5" />
           </button>
 
           {/* Download */}
           <button
             type="button"
             onClick={() => handleDownload()}
-            className="p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Download media"
           >
-            <Download className="size-4.5" />
+            <Download className="size-4 sm:size-4.5" />
           </button>
 
-          <div className="h-5 w-[1px] bg-white/15 mx-1" />
+          <div className="h-4 sm:h-5 w-[1px] bg-white/15 mx-0.5 sm:mx-1" />
 
           {/* Close */}
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-red-500/20 text-white/80 hover:text-red-400 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-full hover:bg-red-500/20 text-white/80 hover:text-red-400 transition-colors cursor-pointer"
             title="Close"
           >
             <X className="size-5" />

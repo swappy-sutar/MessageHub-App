@@ -170,12 +170,12 @@ function Sidebar() {
         </div>
 
         {/* Filter Tabs & Online Toggle */}
-        <div className="flex items-center justify-between gap-1 pt-0.5">
-          <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40">
+        <div className="flex items-center justify-between gap-1.5 pt-0.5 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1 bg-base-200/60 p-0.5 rounded-full border border-base-300/40 shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("all")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === "all" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
@@ -184,16 +184,16 @@ function Sidebar() {
             <button
               type="button"
               onClick={() => setActiveTab("chats")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === "chats" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
-              Direct
+              Direct ({filteredUsers.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("groups")}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap shrink-0 ${
                 activeTab === "groups" ? "bg-base-100 text-primary shadow-xs" : "text-base-content/60"
               }`}
             >
@@ -204,15 +204,15 @@ function Sidebar() {
           <button
             type="button"
             onClick={() => setShowOnlineOnly(!showOnlineOnly)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all select-none cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all select-none cursor-pointer whitespace-nowrap shrink-0 ${
               showOnlineOnly
                 ? "bg-primary/15 text-primary border-primary/30 shadow-sm"
                 : "bg-base-200/50 text-base-content/60 border-base-300/40 hover:bg-base-200"
             }`}
             title="Filter online contacts"
           >
-            <span className={`size-2 rounded-full ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
-            <span className="hidden md:inline">Online</span>
+            <span className={`size-2 rounded-full shrink-0 ${showOnlineOnly ? "bg-success animate-pulse" : "bg-base-content/30"}`} />
+            <span>Online</span>
             <span className="text-[10px] font-mono opacity-80">({onlineCount})</span>
           </button>
         </div>

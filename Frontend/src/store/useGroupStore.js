@@ -9,14 +9,26 @@ export const useGroupStore = create((set, get) => ({
   isGroupLoading: false,
 
   getUserGroups: async () => {
-    set({ isGroupLoading: true });
+    // Instant Offline Load from Cache
+    const cachedGroups = localStorage.getItem("mh_cached_groups");
+    if (cachedGroups) {
+      try {
+        const parsed = JSON.parse(cachedGroups);
+        set({ groups: parsed, isGroupLoading: false });
+      } catch (e) {}
+    } else {
+      set({ isGroupLoading: true });
+    }
+
     try {
       const res = await axiosInstance.get("/groups/my-groups");
-      set({ groups: res.data.data || [], isGroupLoading: false });
-      return res.data.data;
+      const fetchedGroups = res.data.data || [];
+      localStorage.setItem("mh_cached_groups", JSON.stringify(fetchedGroups));
+      set({ groups: fetchedGroups, isGroupLoading: false });
+      return fetchedGroups;
     } catch (error) {
       set({ isGroupLoading: false });
-      console.error("Error fetching user groups:", error);
+      console.error("Error fetching user groups (offline mode active):", error);
     }
   },
 

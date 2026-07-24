@@ -89,36 +89,82 @@ export const useChatStore = create((set, get) => ({
   setEditingMessage: (message) => set({ editingMessage: message }),
 
   getUsers: async () => {
-    set({ isUserLoading: true });
+    // 1. Instant Offline Load from Cache
+    const cachedUsers = localStorage.getItem("mh_cached_users");
+    if (cachedUsers) {
+      try {
+        const parsed = JSON.parse(cachedUsers);
+        set({ users: parsed, isUserLoading: false });
+      } catch (e) {}
+    } else {
+      set({ isUserLoading: true });
+    }
+
     try {
       const response = await axiosInstance.get("/messages/users");
-      set({ users: response.data.data, isUserLoading: false });
+      const fetchedUsers = response.data.data || [];
+      localStorage.setItem("mh_cached_users", JSON.stringify(fetchedUsers));
+      set({ users: fetchedUsers, isUserLoading: false });
     } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Failed to load users");
+      console.error("Error fetching users (offline mode active):", error);
       set({ isUserLoading: false });
     }
   },
 
   getMessages: async (userId) => {
-    set({ isMessagesLoading: true });
+    if (!userId) return;
+    const cacheKey = `mh_cached_msgs_${userId}`;
+
+    // 1. Instant Offline Load from Cache
+    const cachedData = localStorage.getItem(cacheKey);
+    let hasLoadedFromCache = false;
+
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        const byId = {};
+        const ids = [];
+        parsed.forEach((msg) => {
+          byId[msg._id] = msg;
+          ids.push(msg._id);
+        });
+        set({
+          messagesById: byId,
+          messageIds: ids,
+          messages: parsed,
+          isMessagesLoading: false,
+        });
+        hasLoadedFromCache = true;
+      } catch (e) {}
+    }
+
+    if (!hasLoadedFromCache) {
+      set({ isMessagesLoading: true });
+    }
+
     try {
       const response = await axiosInstance.get(`/messages/${userId}`);
       const rawMessages = response.data?.data || [];
 
       const byId = {};
       const ids = [];
+      const decryptedList = [];
 
       rawMessages.forEach((msg) => {
         const decryptedMsg = { ...msg, text: decryptMessageText(msg.text) };
         byId[msg._id] = decryptedMsg;
         ids.push(msg._id);
+        decryptedList.push(decryptedMsg);
       });
+
+      // Save to localStorage for offline viewing
+      localStorage.setItem(cacheKey, JSON.stringify(decryptedList));
 
       set({
         messagesById: byId,
         messageIds: ids,
-        messages: Object.values(byId),
+        messages: decryptedList,
+        isMessagesLoading: false,
       });
 
       get().getPinnedMessages(userId);
@@ -128,8 +174,7 @@ export const useChatStore = create((set, get) => ({
         socket.emit(SOCKET_EVENTS.MARK_MESSAGES_READ, { senderId: userId });
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to load messages");
-      console.error("Error fetching messages:", error);
+      console.error("Error fetching messages (offline mode active):", error);
     } finally {
       set({ isMessagesLoading: false });
     }

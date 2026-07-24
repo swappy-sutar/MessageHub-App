@@ -14,7 +14,7 @@ import CreateGroupModal from "./CreateGroupModal";
 function Sidebar() {
   const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading, unreadCounts } =
     useChatStore();
-  const { groups, getUserGroups } = useGroupStore();
+  const { groups, getUserGroups, isGroupLoading } = useGroupStore();
   const { socket } = useAuthStore();
   const { onlineUsers } = usePresenceStore();
   const { receivedInvites, getInvites, initInviteListeners } = useFriendStore();

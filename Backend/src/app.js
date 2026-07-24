@@ -16,6 +16,7 @@ app.use(cookieParser());
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     contentSecurityPolicy: false, // Disabled for flexible cross-origin media & WebSockets
   })
 );
@@ -49,6 +50,8 @@ app.use(globalLimiter);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://localhost:4173",
+  "https://messagee-hub.vercel.app",
   "https://messagehub-i52c.onrender.com",
   "https://chat-app-by-er-swappy.vercel.app",
   "https://realtime-chat-application-mern-phi.vercel.app",
@@ -58,13 +61,14 @@ const allowedOrigins = [
 // CORS Options
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS Policy Error: Origin not allowed"), false);
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/$/, "");
+    if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
+      return callback(null, true);
     }
+    return callback(new Error(`CORS Policy Error: Origin ${origin} not allowed`), false);
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   credentials: true,
 };
 

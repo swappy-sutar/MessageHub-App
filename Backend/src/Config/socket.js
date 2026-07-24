@@ -13,6 +13,8 @@ const server = http.createServer(app);
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://localhost:4173",
+  "https://messagee-hub.vercel.app",
   "https://messagehub-i52c.onrender.com",
   "https://chat-app-by-er-swappy.vercel.app",
   "https://realtime-chat-application-mern-phi.vercel.app",
@@ -22,10 +24,12 @@ const allowedOrigins = [
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/$/, "");
+      if (allowedOrigins.includes(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
         callback(null, true);
       } else {
-        callback(new Error("CORS Policy Error: Socket origin not allowed"), false);
+        callback(new Error(`CORS Policy Error: Socket origin ${origin} not allowed`), false);
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

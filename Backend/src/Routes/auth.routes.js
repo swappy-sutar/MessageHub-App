@@ -9,6 +9,8 @@ import {
   logout,
   logoutAll,
   getActiveSessions,
+  getAccountReport,
+  deleteUserAccount,
 } from "../Controllers/auth.controller.js";
 import { auth } from "../Middlewares/auth.middleware.js";
 import { validateBody } from "../Middlewares/validate.middleware.js";
@@ -26,5 +28,7 @@ router.post("/logout-all", auth, logoutAll);
 
 router.get("/check-auth", auth, checkAuth);
 router.get("/sessions", auth, getActiveSessions);
+router.get("/account-report", auth, getAccountReport);
+router.delete("/delete-account", auth, deleteUserAccount);
 
 export default router;

@@ -42,6 +42,8 @@ import { WALLPAPER_COLORS } from "../store/useThemeStore.js";
 import avatarLogo from "../assets/avatar.png";
 import toast from "react-hot-toast";
 
+import { axiosInstance } from "../utils/axios.js";
+
 const PREVIEW_MESSAGES = [
   { id: 1, content: "Hey! Good Morning 😊", isSent: true },
   { id: 2, content: "How are you?", isSent: false },
@@ -61,6 +63,43 @@ const SettingsDrawer = () => {
   const [playSound, setPlaySound] = useState(false);
   const [bgSync, setBgSync] = useState(true);
   const [joinBeta, setJoinBeta] = useState(false);
+
+  // Account Sub-view States & Handlers
+  const [securityNotifications, setSecurityNotifications] = useState(
+    localStorage.getItem("mh_sec_notif") !== "false"
+  );
+  const [accountReport, setAccountReport] = useState(null);
+  const [isRequestingReport, setIsRequestingReport] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  const handleRequestAccountReport = async () => {
+    setIsRequestingReport(true);
+    try {
+      const res = await axiosInstance.get("/auth/account-report");
+      setAccountReport(res.data.data);
+      toast.success("Account report ready for download! 📄");
+    } catch (err) {
+      toast.error("Failed to generate account report");
+    } finally {
+      setIsRequestingReport(false);
+    }
+  };
+
+  const handleDeleteAccountConfirm = async () => {
+    setIsDeletingAccount(true);
+    try {
+      await axiosInstance.delete("/auth/delete-account");
+      toast.success("Your account has been deleted");
+      close();
+      logout();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete account");
+    } finally {
+      setIsDeletingAccount(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
 
   const drawerRef = useRef(null);
 
@@ -188,6 +227,12 @@ const SettingsDrawer = () => {
       ? "Profile"
       : activeSubView === "account"
       ? "Account"
+      : activeSubView === "security-notifications"
+      ? "Security notifications"
+      : activeSubView === "request-account-info"
+      ? "Request account info"
+      : activeSubView === "how-to-delete-account"
+      ? "How to delete my account"
       : activeSubView === "privacy"
       ? "Privacy"
       : activeSubView === "notifications"
@@ -457,6 +502,196 @@ const SettingsDrawer = () => {
                   <span className="badge badge-success badge-sm gap-1">Active</span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════
+            ACCOUNT MAIN SUB-VIEW
+        ══════════════════════════════════ */}
+        {activeSubView === "account" && (
+          <div className="p-4 space-y-3 animate-fade-in">
+            {/* Security notifications option */}
+            <button
+              type="button"
+              onClick={() => setActiveSubView("security-notifications")}
+              className="w-full p-4 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300 flex items-center gap-4 text-left transition-all group"
+            >
+              <div className="size-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                <Shield className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-base-content group-hover:text-emerald-600 transition-colors">
+                  Security notifications
+                </p>
+              </div>
+              <ChevronRight className="size-4 text-base-content/30 group-hover:text-emerald-600 transition-colors shrink-0" />
+            </button>
+
+            {/* Request account info option */}
+            <button
+              type="button"
+              onClick={() => setActiveSubView("request-account-info")}
+              className="w-full p-4 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300 flex items-center gap-4 text-left transition-all group"
+            >
+              <div className="size-11 rounded-2xl bg-base-300/60 text-base-content/70 flex items-center justify-center shrink-0">
+                <FileText className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-base-content group-hover:text-primary transition-colors">
+                  Request account info
+                </p>
+              </div>
+              <ChevronRight className="size-4 text-base-content/30 group-hover:text-primary transition-colors shrink-0" />
+            </button>
+
+            {/* How to delete my account option */}
+            <button
+              type="button"
+              onClick={() => setActiveSubView("how-to-delete-account")}
+              className="w-full p-4 rounded-2xl bg-base-200/50 hover:bg-base-200 border border-base-300 flex items-center gap-4 text-left transition-all group"
+            >
+              <div className="size-11 rounded-2xl bg-base-300/60 text-base-content/70 flex items-center justify-center shrink-0">
+                <Info className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-base-content group-hover:text-error transition-colors">
+                  How to delete my account
+                </p>
+              </div>
+              <ChevronRight className="size-4 text-base-content/30 group-hover:text-error transition-colors shrink-0" />
+            </button>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════
+            SECURITY NOTIFICATIONS SUB-VIEW
+        ══════════════════════════════════ */}
+        {activeSubView === "security-notifications" && (
+          <div className="p-5 space-y-5 animate-fade-in">
+            <div className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-3">
+              <div className="size-14 mx-auto rounded-full bg-emerald-500/20 text-emerald-600 flex items-center justify-center">
+                <Shield className="size-7 stroke-[2.5]" />
+              </div>
+              <h3 className="text-base font-extrabold text-base-content">
+                Show security notifications on this computer
+              </h3>
+              <p className="text-xs text-base-content/70 leading-relaxed">
+                Get notified when your security code changes for a contact's phone in an end-to-end encrypted chat. If you have multiple devices, this setting must be enabled on each device where you want to get notifications.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-base-200/60 border border-base-300 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-base-content">Show security notifications</p>
+                <p className="text-xs text-base-content/50 mt-0.5">Receive alerts when encryption keys change</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={securityNotifications}
+                onChange={(e) => {
+                  setSecurityNotifications(e.target.checked);
+                  localStorage.setItem("mh_sec_notif", String(e.target.checked));
+                  toast.success(e.target.checked ? "Security notifications enabled" : "Security notifications disabled");
+                }}
+                className="toggle toggle-success flex-shrink-0"
+              />
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-base-200/40 border border-base-300/60 flex items-center gap-3 text-xs text-base-content/70">
+              <Lock className="size-4 text-emerald-500 shrink-0" />
+              <span>Your chats and calls are end-to-end encrypted using Signal Protocol P-256</span>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════
+            REQUEST ACCOUNT INFO SUB-VIEW
+        ══════════════════════════════════ */}
+        {activeSubView === "request-account-info" && (
+          <div className="p-5 space-y-5 animate-fade-in">
+            <div className="p-5 rounded-3xl bg-primary/10 border border-primary/20 text-center space-y-3">
+              <div className="size-14 mx-auto rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                <FileText className="size-7 stroke-[2]" />
+              </div>
+              <h3 className="text-base font-extrabold text-base-content">
+                Request Account Information Report
+              </h3>
+              <p className="text-xs text-base-content/70 leading-relaxed">
+                Create a report of your MessageHub account information and settings, which you can access or port to another app. This report does not include your personal chat messages.
+              </p>
+            </div>
+
+            {accountReport ? (
+              <div className="p-4 rounded-2xl bg-base-200/70 border border-base-300 space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-success">
+                  <span className="flex items-center gap-1.5"><Check className="size-4" /> Report Ready</span>
+                  <span className="opacity-70 font-mono">{new Date(accountReport.generatedAt).toLocaleDateString()}</span>
+                </div>
+                <p className="text-xs text-base-content/70">Your account details, security logs, and settings report has been generated.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const blob = new Blob([JSON.stringify(accountReport, null, 2)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `messagehub-account-report-${Date.now()}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast.success("Account report downloaded! 📄");
+                  }}
+                  className="btn btn-sm btn-primary w-full rounded-xl flex items-center justify-center gap-2"
+                >
+                  <Download className="size-4" /> Download Report (JSON)
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={isRequestingReport}
+                onClick={handleRequestAccountReport}
+                className="btn btn-primary w-full rounded-2xl font-bold flex items-center justify-center gap-2 shadow-md"
+              >
+                {isRequestingReport ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  <FileText className="size-4" />
+                )}
+                <span>{isRequestingReport ? "Generating Report..." : "Request Report"}</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════
+            HOW TO DELETE MY ACCOUNT SUB-VIEW
+        ══════════════════════════════════ */}
+        {activeSubView === "how-to-delete-account" && (
+          <div className="p-5 space-y-5 animate-fade-in">
+            <div className="p-4 rounded-2xl bg-error/10 border border-error/20 text-error space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Info className="size-5 shrink-0" />
+                <span>Deleting your account will:</span>
+              </div>
+              <ul className="text-xs space-y-1.5 pl-6 list-disc opacity-90 leading-relaxed">
+                <li>Delete your profile and user data from MessageHub</li>
+                <li>Erase all your sent and received message history</li>
+                <li>Remove you from all your MessageHub groups and channels</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-base-200/60 border border-base-300 space-y-3">
+              <p className="text-xs text-base-content/70 leading-relaxed">
+                Deleting your account is permanent and cannot be undone. To proceed, click the button below.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="btn btn-error w-full rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-md"
+              >
+                <LogOut className="size-4" /> Delete Account
+              </button>
             </div>
           </div>
         )}
@@ -925,6 +1160,40 @@ const SettingsDrawer = () => {
           </>
         )}
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-base-100 rounded-3xl p-6 max-w-sm w-full border border-base-300 shadow-2xl space-y-4 animate-scale-up">
+            <div className="size-12 rounded-full bg-error/10 text-error flex items-center justify-center mx-auto">
+              <LogOut className="size-6" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-extrabold text-base-content">Delete Account Permanently?</h3>
+              <p className="text-xs text-base-content/60 leading-relaxed">
+                Are you sure you want to delete your MessageHub account? This will erase all your messages, chats, and groups forever.
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="btn btn-sm btn-ghost flex-1 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAccount}
+                onClick={handleDeleteAccountConfirm}
+                className="btn btn-sm btn-error text-white flex-1 rounded-xl"
+              >
+                {isDeletingAccount ? <span className="loading loading-spinner loading-xs" /> : "Delete Forever"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </div>
   );

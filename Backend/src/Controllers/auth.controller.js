@@ -1,4 +1,6 @@
 import { User } from "../Models/user.model.js";
+import { Group } from "../Models/group.model.js";
+import { Message } from "../Models/message.model.js";
 import bcrypt from "bcryptjs";
 import JWT from "jsonwebtoken";
 import {
@@ -516,6 +518,90 @@ const getActiveSessions = async (req, res) => {
   }
 };
 
+const getAccountReport = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password -sessions.refreshToken");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const groupsCount = await Group.countDocuments({ "members.user": req.user._id });
+    const messagesCount = await Message.countDocuments({
+      $or: [{ senderId: req.user._id }, { receiverId: req.user._id }],
+    });
+
+    const report = {
+      reportTitle: "MessageHub Account Information & Settings Report",
+      generatedAt: new Date().toISOString(),
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        inviteCode: user.inviteCode || "N/A",
+        accountCreatedAt: user.createdAt,
+        lastSeen: user.lastSeen,
+      },
+      stats: {
+        friendsCount: user.friends ? user.friends.length : 0,
+        groupsCount,
+        totalMessagesSentOrReceived: messagesCount,
+      },
+      security: {
+        e2eeStatus: "Signal Protocol E2EE Active",
+        activeSessionsCount: user.sessions ? user.sessions.length : 1,
+      },
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: "Account report generated successfully",
+      data: report,
+    });
+  } catch (error) {
+    console.error("Error generating account report:", error);
+    return res.status(500).json({ success: false, message: "Failed to generate account report" });
+  }
+};
+
+const deleteUserAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // 1. Remove user from friends lists
+    await User.updateMany(
+      { $or: [{ friends: userId }, { sentInvites: userId }, { receivedInvites: userId }] },
+      { $pull: { friends: userId, sentInvites: userId, receivedInvites: userId } }
+    );
+
+    // 2. Remove user from groups
+    await Group.updateMany(
+      { "members.user": userId },
+      { $pull: { members: { user: userId } } }
+    );
+
+    // 3. Delete user messages
+    await Message.deleteMany({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    });
+
+    // 4. Delete user profile document
+    await User.findByIdAndDelete(userId);
+
+    // 5. Clear authentication cookies
+    res.cookie("jwt", "", { maxAge: 0, httpOnly: true });
+    res.cookie("refreshToken", "", { maxAge: 0, httpOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    return res.status(500).json({ success: false, message: "Failed to delete account" });
+  }
+};
+
 export {
   signupUser,
   loginUser,
@@ -526,4 +612,6 @@ export {
   logout,
   logoutAll,
   getActiveSessions,
+  getAccountReport,
+  deleteUserAccount,
 };

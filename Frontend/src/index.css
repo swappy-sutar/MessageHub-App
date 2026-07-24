@@ -14,20 +14,25 @@
   --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
 }
 
-* {
+html, body {
   box-sizing: border-box;
-}
-
-body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: none;
 }
 
-/* Custom scrollbar */
+/* Hardware GPU acceleration helper */
+.transform-gpu {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Custom smooth scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -35,12 +40,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(140, 140, 160, 0.3);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.7);
+  background: rgba(140, 140, 160, 0.6);
 }
 
 /* Glass morphism utility */
@@ -104,53 +109,56 @@ body {
   animation: float 3s ease-in-out infinite;
 }
 
-/* Slide in animations */
+/* Slide in animations with hardware GPU acceleration */
 @keyframes slideInLeft {
   from {
     opacity: 0;
-    transform: translateX(-30px);
+    transform: translate3d(-30px, 0, 0);
   }
 
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes slideInRight {
   from {
     opacity: 0;
-    transform: translateX(30px);
+    transform: translate3d(30px, 0, 0);
   }
 
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translate3d(0, 20px, 0);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-slide-in-left {
-  animation: slideInLeft 0.5s ease forwards;
+  animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .animate-slide-in-right {
-  animation: slideInRight 0.5s ease forwards;
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.5s ease forwards;
+  animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* Shimmer effect */
@@ -224,21 +232,22 @@ body {
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
-/* Message bubble animations */
+/* Message bubble animations with hardware acceleration */
 @keyframes messageIn {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(8px);
+    transform: translate3d(0, 6px, 0) scale(0.96);
   }
 
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 .message-animate {
-  animation: messageIn 0.2s ease forwards;
+  animation: messageIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
 }
 
 /* Online status pulse */
@@ -258,62 +267,6 @@ body {
 
 .online-pulse {
   animation: onlinePulse 2s ease-in-out infinite;
-}
-
-/* Auth page patterns */
-@keyframes patternFloat {
-
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-
-  33% {
-    transform: translateY(-8px) rotate(1deg);
-  }
-
-  66% {
-    transform: translateY(4px) rotate(-1deg);
-  }
-}
-
-.pattern-card {
-  animation: patternFloat 4s ease-in-out infinite;
-}
-
-.pattern-card:nth-child(2n) {
-  animation-delay: 0.5s;
-}
-
-.pattern-card:nth-child(3n) {
-  animation-delay: 1s;
-}
-
-/* Orb background elements */
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.15;
-  pointer-events: none;
-}
-
-.orb-1 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, #6366f1, transparent);
-  top: -100px;
-  right: -100px;
-  animation: float 8s ease-in-out infinite;
-}
-
-.orb-2 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, #a855f7, transparent);
-  bottom: -50px;
-  left: -50px;
-  animation: float 10s ease-in-out infinite reverse;
 }
 
 /* Sidebar user card */
@@ -375,15 +328,6 @@ body {
   z-index: 10;
 }
 
-/* WhatsApp Dark Mode Chat Background & Wallpaper */
-.whatsapp-chat-bg {
-  background-color: #0b141a;
-  background-image: url("./assets/whatsapp-bg.svg");
-  background-repeat: repeat;
-  background-size: 440px 440px;
-  background-attachment: local;
-}
-
 /* WhatsApp Date Divider Pill Badge */
 .whatsapp-date-badge {
   background-color: rgba(24, 34, 41, 0.92);
@@ -399,7 +343,7 @@ body {
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* Compact WhatsApp Chat Bubble Overrides for Mobile */
+/* Compact WhatsApp Chat Bubble Overrides */
 .chat-bubble {
   min-height: unset !important;
   line-height: 1.35 !important;

@@ -54,11 +54,13 @@ function Sidebar() {
       return fullName.includes(searchQuery.toLowerCase());
     });
 
-  // Filter groups
-  const filteredGroups = safeGroups.filter((group) => {
-    if (!searchQuery) return true;
-    return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  // Filter groups (Groups do not have online presence, so exclude them when Online filter is active)
+  const filteredGroups = showOnlineOnly
+    ? []
+    : safeGroups.filter((group) => {
+        if (!searchQuery) return true;
+        return (group.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+      });
 
   // Build unified list sorted chronologically by latest message timestamp (newest message 1st!)
   const combinedItems = [];

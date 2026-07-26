@@ -54,15 +54,19 @@ const PREVIEW_MESSAGES = [
 const SettingsDrawer = () => {
   const { isSettingsOpen, setSettingsOpen } = useChatStore();
   const { theme, setTheme, wallpaper, setWallpaper, showDoodles, setShowDoodles } = useThemeStore();
-  const { authUser, logout, isUpdateProfile, updateProfile } = useAuthStore();
+  const {
+    authUser,
+    logout,
+    isUpdateProfile,
+    updateProfile,
+    notificationSettings,
+    updateNotificationSettings
+  } = useAuthStore();
 
   const [activeSubView, setActiveSubView] = useState(null);
   const [selectedImg, setSelectedImg] = useState(null);
   const [copied, setCopied] = useState(false);
   const [readReceipts, setReadReceipts] = useState(true);
-  const [showPreviews, setShowPreviews] = useState(true);
-  const [playSound, setPlaySound] = useState(false);
-  const [bgSync, setBgSync] = useState(true);
   const [joinBeta, setJoinBeta] = useState(false);
 
   // Account Sub-view States & Handlers
@@ -881,15 +885,19 @@ const SettingsDrawer = () => {
             {/* Message / Group / Status rows */}
             <div className="px-3 pt-3">
               {[
-                { icon: MessageCircle, label: "Messages", value: "Off" },
-                { icon: Users, label: "Groups", value: "Off" },
-                { icon: Radio, label: "Status", value: "Off" },
+                { icon: MessageCircle, label: "Messages", key: "messages", value: notificationSettings?.messages || "Off" },
+                { icon: Users, label: "Groups", key: "groups", value: notificationSettings?.groups || "Off" },
+                { icon: Radio, label: "Status", key: "status", value: notificationSettings?.status || "Off" },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
                   <button
                     key={item.label}
-                    onClick={() => toast(`${item.label} notification settings coming soon`)}
+                    onClick={() => {
+                      const nextVal = item.value === "On" ? "Off" : "On";
+                      updateNotificationSettings({ [item.key]: nextVal });
+                      toast.success(`${item.label} notifications turned ${nextVal}`);
+                    }}
                     className="w-full px-4 py-4 flex items-center justify-between hover:bg-base-200/60 transition-all text-left group"
                   >
                     <div className="flex items-center gap-4">
@@ -914,21 +922,24 @@ const SettingsDrawer = () => {
               {[
                 {
                   label: "Show previews",
+                  key: "showPreviews",
                   desc: "Preview message text inside message notifications.",
-                  value: showPreviews,
-                  set: setShowPreviews,
+                  value: notificationSettings?.showPreviews ?? true,
+                  set: (val) => updateNotificationSettings({ showPreviews: val }),
                 },
                 {
                   label: "Play sound for outgoing messages",
+                  key: "playOutgoingSound",
                   desc: null,
-                  value: playSound,
-                  set: setPlaySound,
+                  value: notificationSettings?.playOutgoingSound ?? false,
+                  set: (val) => updateNotificationSettings({ playOutgoingSound: val }),
                 },
                 {
                   label: "Background sync",
+                  key: "backgroundSync",
                   desc: "Get faster performance by syncing messages in the background.",
-                  value: bgSync,
-                  set: setBgSync,
+                  value: notificationSettings?.backgroundSync ?? true,
+                  set: (val) => updateNotificationSettings({ backgroundSync: val }),
                 },
               ].map((item) => (
                 <div key={item.label} className="py-4 flex items-start justify-between gap-4 border-b border-base-300/50 last:border-none">
@@ -941,7 +952,7 @@ const SettingsDrawer = () => {
                     checked={item.value}
                     onChange={(e) => {
                       item.set(e.target.checked);
-                      toast(item.label + (e.target.checked ? " enabled" : " disabled"));
+                      toast.success(item.label + (e.target.checked ? " enabled" : " disabled"));
                     }}
                     className="toggle toggle-success mt-0.5 flex-shrink-0"
                   />

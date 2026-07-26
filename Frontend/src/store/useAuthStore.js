@@ -33,6 +33,14 @@ const useAuthStore = create((set, get) => ({
   isUpdateProfile: false,
   onlineUsers: [],
   socket: null,
+  notificationSettings: {
+    messages: "Off",
+    groups: "Off",
+    status: "Off",
+    showPreviews: true,
+    playOutgoingSound: false,
+    backgroundSync: true
+  },
 
   checkAuth: async () => {
     try {
@@ -52,6 +60,7 @@ const useAuthStore = create((set, get) => ({
       set({ authUser: response.data });
       get().connectSocket();
       pushNotifications.requestPermission();
+      get().getNotificationSettings();
     } catch (error) {
       if (error?.code !== "ERR_NETWORK" && error?.response?.status !== 401) {
         console.error("Error checking CheckAuth:", error);
@@ -70,6 +79,7 @@ const useAuthStore = create((set, get) => ({
       toast.success("Account created successfully!");
       get().connectSocket();
       pushNotifications.requestPermission();
+      get().getNotificationSettings();
     } catch (error) {
       console.error("Error signing up:", error);
       toast.error(
@@ -100,6 +110,7 @@ const useAuthStore = create((set, get) => ({
 
       get().connectSocket();
       pushNotifications.requestPermission();
+      get().getNotificationSettings();
     } catch (error) {
       console.error("Error logging in:", error);
       toast.error(
@@ -203,6 +214,35 @@ const useAuthStore = create((set, get) => ({
       Cookies.remove("refreshToken");
       get().disconnectSocket();
       set({ authUser: null, isLoading: false });
+    }
+  },
+
+  getNotificationSettings: async () => {
+    try {
+      const response = await axiosInstance.get("/user/notification-settings");
+      if (response.data?.success) {
+        set({ notificationSettings: response.data.data });
+      }
+    } catch (error) {
+      console.error("Error fetching notification settings:", error);
+    }
+  },
+
+  updateNotificationSettings: async (updates) => {
+    const previousSettings = get().notificationSettings;
+    set((state) => ({
+      notificationSettings: { ...state.notificationSettings, ...updates }
+    }));
+
+    try {
+      const response = await axiosInstance.put("/user/notification-settings", updates);
+      if (response.data?.success) {
+        set({ notificationSettings: response.data.data });
+      }
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      set({ notificationSettings: previousSettings });
+      toast.error("Failed to update notification settings");
     }
   },
 

@@ -6,6 +6,8 @@ import {
   toggleMuteUser,
   reportUser,
   getUserPrivacyStatus,
+  getNotificationSettings,
+  updateNotificationSettings,
 } from '../Controllers/user.controller.js';
 import { auth } from "../Middlewares/auth.middleware.js";
 
@@ -17,5 +19,8 @@ router.post("/favourite/:targetUserId", auth, toggleFavouriteUser);
 router.post("/mute/:targetUserId", auth, toggleMuteUser);
 router.post("/report/:targetUserId", auth, reportUser);
 router.get("/privacy-status/:targetUserId", auth, getUserPrivacyStatus);
+
+router.get("/notification-settings", auth, getNotificationSettings);
+router.put("/notification-settings", auth, updateNotificationSettings);
 
 export default router;

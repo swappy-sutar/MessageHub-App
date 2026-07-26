@@ -469,8 +469,15 @@ export const useChatStore = create((set, get) => ({
 
       set({ users: updatedUsers });
 
+      const notifSettings = useAuthStore.getState().notificationSettings || {};
+      const isNotificationsOn = notifSettings.messages !== "Off";
+      const showPreviews = notifSettings.showPreviews !== false;
+      const playOutgoingSound = notifSettings.playOutgoingSound === true;
+
       if (isMyOwnMessage) {
-        ringtone.playSentMessageTone();
+        if (playOutgoingSound) {
+          ringtone.playSentMessageTone();
+        }
       } else {
         ringtone.playIncomingMessageTone();
       }
@@ -478,10 +485,10 @@ export const useChatStore = create((set, get) => ({
       const contactUser = get().users.find((u) => String(u._id) === contactId);
       const contactName = contactUser ? `${contactUser.firstName} ${contactUser.lastName}` : "Someone";
 
-      if (!isMyOwnMessage) {
+      if (!isMyOwnMessage && isNotificationsOn) {
         pushNotifications.sendDesktopNotification({
-          title: contactName,
-          body: msgPreview || "Sent an attachment",
+          title: showPreviews ? contactName : "MessageHub",
+          body: showPreviews ? (msgPreview || "Sent an attachment") : "New message received",
           icon: contactUser?.profilePic || "/avatar.png",
           tag: `msg-${contactId}`,
           onClick: () => {

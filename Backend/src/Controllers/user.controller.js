@@ -209,6 +209,76 @@ const getUserPrivacyStatus = async (req, res) => {
   }
 };
 
+// Fetch current user notification settings
+const getNotificationSettings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId).select("notificationSettings");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const settings = user.notificationSettings || {
+      messages: "Off",
+      groups: "Off",
+      status: "Off",
+      showPreviews: true,
+      playOutgoingSound: false,
+      backgroundSync: true,
+    };
+
+    return res.status(200).json({
+      success: true,
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Error in getNotificationSettings:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch notification settings." });
+  }
+};
+
+// Update notification settings
+const updateNotificationSettings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const updates = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.notificationSettings) {
+      user.notificationSettings = {
+        messages: "Off",
+        groups: "Off",
+        status: "Off",
+        showPreviews: true,
+        playOutgoingSound: false,
+        backgroundSync: true,
+      };
+    }
+
+    const fields = ["messages", "groups", "status", "showPreviews", "playOutgoingSound", "backgroundSync"];
+    fields.forEach((field) => {
+      if (updates[field] !== undefined) {
+        user.notificationSettings[field] = updates[field];
+      }
+    });
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification settings updated successfully",
+      data: user.notificationSettings,
+    });
+  } catch (error) {
+    console.error("Error in updateNotificationSettings:", error);
+    return res.status(500).json({ success: false, message: "Failed to update notification settings." });
+  }
+};
+
 export {
   getUsersForSidebar,
   toggleBlockUser,
@@ -216,4 +286,6 @@ export {
   toggleMuteUser,
   reportUser,
   getUserPrivacyStatus,
+  getNotificationSettings,
+  updateNotificationSettings,
 };

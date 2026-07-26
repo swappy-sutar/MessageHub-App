@@ -95,6 +95,14 @@ const UserSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    notificationSettings: {
+      messages: { type: String, default: "Off" },
+      groups: { type: String, default: "Off" },
+      status: { type: String, default: "Off" },
+      showPreviews: { type: Boolean, default: true },
+      playOutgoingSound: { type: Boolean, default: false },
+      backgroundSync: { type: Boolean, default: true },
+    },
   },
   { timestamps: true }
 );

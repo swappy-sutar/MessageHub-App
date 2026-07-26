@@ -216,7 +216,7 @@ export class WebRTCService {
    * @returns {Promise<RTCSessionDescriptionInit>} plain answer
    */
   async createAnswer(remoteOffer) {
-    await this.pc.setRemoteDescription(new RTCSessionDescription(remoteOffer));
+    await this.pc.setRemoteDescription(remoteOffer);
     await this._flushIceCandidateQueue();
 
     const answer = await this.pc.createAnswer();
@@ -229,7 +229,7 @@ export class WebRTCService {
    * @param {{ type: string, sdp: string }} remoteAnswer
    */
   async setRemoteAnswer(remoteAnswer) {
-    await this.pc.setRemoteDescription(new RTCSessionDescription(remoteAnswer));
+    await this.pc.setRemoteDescription(remoteAnswer);
     await this._flushIceCandidateQueue();
   }
 
@@ -293,7 +293,7 @@ export class WebRTCService {
    * @returns {Promise<RTCSessionDescriptionInit>} answer
    */
   async applyIceRestartOffer(restartOffer) {
-    await this.pc.setRemoteDescription(new RTCSessionDescription(restartOffer));
+    await this.pc.setRemoteDescription(restartOffer);
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     return { type: answer.type, sdp: answer.sdp };

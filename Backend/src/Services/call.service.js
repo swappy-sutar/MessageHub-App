@@ -8,8 +8,7 @@ import { randomUUID } from "crypto";
 /**
  * Create a new call record when a call is initiated.
  */
-export const createCallRecord = async ({ callerId, receiverId, type }) => {
-  const callId = randomUUID();
+export const createCallRecord = async ({ callId, callerId, receiverId, type }) => {
   const call = await Call.create({
     callId,
     callerId,

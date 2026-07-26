@@ -497,6 +497,9 @@ export const useCallStore = create((set, get) => ({
       });
 
       const stream = await webrtcService.acquireLocalMedia(callType);
+      const answer = await webrtcService.createAnswer(offer);
+
+      socket.emit("answerCall", { to: String(from), answer, callId });
 
       set({
         localStream: stream,
@@ -507,10 +510,6 @@ export const useCallStore = create((set, get) => ({
       });
 
       startCallTimer(set);
-
-      const answer = await webrtcService.createAnswer(offer);
-
-      socket.emit("answerCall", { to: String(from), answer, callId });
     } catch (err) {
       console.error("[Call] acceptCall error:", err);
       toast.error("Failed to connect call.");

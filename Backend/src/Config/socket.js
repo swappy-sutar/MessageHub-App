@@ -201,7 +201,7 @@ io.on("connection", async (socket) => {
         socket.emit(SOCKET_EVENTS.CALL_REJECTED, { callId, reason: "offline" });
         try {
           const { createCallRecord, missCallRecord } = await import("../Services/call.service.js");
-          const record = await createCallRecord({ callerId: userId, receiverId: to, type: callType });
+          const record = await createCallRecord({ callId, callerId: userId, receiverId: to, type: callType });
           await missCallRecord(record.callId);
         } catch (_) {}
         return;
@@ -218,7 +218,7 @@ io.on("connection", async (socket) => {
 
       // Persist call record asynchronously (fire and forget for hot path)
       import("../Services/call.service.js").then(({ createCallRecord }) =>
-        createCallRecord({ callerId: userId, receiverId: to, type: callType })
+        createCallRecord({ callId, callerId: userId, receiverId: to, type: callType })
       ).catch(() => {});
 
       // Deliver to all receiver tabs/devices

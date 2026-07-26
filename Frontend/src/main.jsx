@@ -40,6 +40,30 @@ if ("serviceWorker" in navigator) {
       .then((reg) => console.log("PWA Service Worker registered:", reg.scope))
       .catch((err) => console.error("PWA Service Worker registration failed:", err));
   });
+
+  // Handle actions received from Service Worker notifications (e.g. Mark as Read)
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "MARK_READ") {
+      const contactId = event.data.tag?.replace("msg-", "");
+      if (contactId) {
+        Promise.all([
+          import("./store/useChatStore.js"),
+          import("./store/useAuthStore.js")
+        ]).then(([{ useChatStore }, { useAuthStore }]) => {
+          const socket = useAuthStore.getState().socket;
+          if (socket) {
+            socket.emit("markMessagesRead", { senderId: contactId });
+          }
+          useChatStore.setState((state) => ({
+            unreadCounts: {
+              ...state.unreadCounts,
+              [contactId]: 0
+            }
+          }));
+        }).catch((err) => console.error("Failed to load stores for SW action:", err));
+      }
+    }
+  });
 }
 
 

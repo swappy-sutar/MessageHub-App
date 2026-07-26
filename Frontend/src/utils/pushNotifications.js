@@ -25,12 +25,40 @@ class PushNotificationManager {
     return Notification.permission;
   }
 
-  // Send native PC desktop notification for incoming messages
-  sendDesktopNotification({ title, body, icon, tag, onClick }) {
+  // Send native PC desktop/mobile notification for incoming messages
+  async sendDesktopNotification({ title, body, icon, tag, onClick }) {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (this.permission !== "granted" && Notification.permission !== "granted") return;
 
     try {
+      // Display notification via Service Worker (compulsory for mobile, best practice for desktop PWA)
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration) {
+          const options = {
+            body: body || "You received a new message on MessageHub",
+            icon: icon || "/avatar.png",
+            badge: "/avatar.png",
+            tag: tag || `msg-${Date.now()}`,
+            renotify: true,
+            vibrate: [200, 100, 200], // vibration feedback
+            actions: [
+              { action: "reply", title: "Reply" },
+              { action: "mark_read", title: "Mark as read" },
+              { action: "mute", title: "Mute" }
+            ],
+            data: {
+              onClickUrl: window.location.origin,
+              tag: tag
+            }
+          };
+
+          await registration.showNotification(title || "💬 New Message", options);
+          return;
+        }
+      }
+
+      // Legacy fallback for window context constructor
       const notif = new Notification(title || "💬 New Message", {
         body: body || "You received a new message on MessageHub",
         icon: icon || "/avatar.png",
@@ -51,7 +79,7 @@ class PushNotificationManager {
     }
   }
 
-  // Send native PC desktop notification for incoming WebRTC calls
+  // Send native PC desktop/mobile notification for incoming WebRTC calls
   sendCallNotification({ callerName, callType, onClick }) {
     const isVideo = callType === "video";
     const title = isVideo ? `📹 Incoming Video Call` : `📞 Incoming Voice Call`;

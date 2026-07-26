@@ -11,13 +11,19 @@ import {
 import { getReceiverSocketID, getReceiverSocketIDs, emitToUser, io } from "../Config/socket.js";
 import CryptoJS from "crypto-js";
 
-const LEGACY_KEYS = [
-  process.env.ENCRYPTION_KEY,
-  "e420b6990215c371d0c267e077377ca31b2684e2bf8a0bfab83ad7a362607b3c",
-  "a9d8f7e6c5b4a39281706f5e4d3c2b1a0987654321fedcba0987654321abcdef",
-  "messagehub_secret_encryption_key_2026",
-  "secretKey",
-];
+const getLegacyKeys = () => {
+  const keys = [process.env.ENCRYPTION_KEY];
+  const legacyEnv = process.env.LEGACY_ENCRYPTION_KEYS;
+  if (legacyEnv) {
+    keys.push(...legacyEnv.split(",").map(k => k.trim()));
+  } else {
+    // Non-sensitive dev fallback keys
+    keys.push("messagehub_secret_encryption_key_2026", "secretKey");
+  }
+  return [...new Set(keys.filter(Boolean))];
+};
+
+const LEGACY_KEYS = getLegacyKeys();
 
 const decryptTextHelper = (ciphertext) => {
   if (!ciphertext) return "";

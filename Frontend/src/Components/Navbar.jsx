@@ -129,13 +129,13 @@ const Navbar = () => {
                             >
                               <div className="flex items-center gap-2">
                                 <img
-                                  src={invite.senderId?.profilePic || avatarLogo}
-                                  alt={invite.senderId?.firstName}
+                                  src={invite.profilePic || avatarLogo}
+                                  alt={invite.firstName}
                                   className="size-7 rounded-full object-cover"
                                 />
                                 <div className="text-xs truncate">
                                   <span className="font-bold text-base-content">
-                                    {invite.senderId?.firstName} {invite.senderId?.lastName}
+                                    {invite.firstName} {invite.lastName}
                                   </span>
                                   <p className="text-[10px] text-base-content/60">
                                     Sent you a friend invite
@@ -145,13 +145,13 @@ const Navbar = () => {
 
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => acceptInvite(invite.senderId?._id)}
+                                  onClick={() => acceptInvite(invite._id)}
                                   className="btn btn-xs btn-primary flex-1 gap-1 rounded-lg"
                                 >
                                   <Check className="size-3" /> Accept
                                 </button>
                                 <button
-                                  onClick={() => rejectInvite(invite.senderId?._id)}
+                                  onClick={() => rejectInvite(invite._id)}
                                   className="btn btn-xs btn-ghost border border-base-300 flex-1 gap-1 rounded-lg text-error"
                                 >
                                   <X className="size-3" /> Decline

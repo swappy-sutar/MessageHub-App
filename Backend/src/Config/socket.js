@@ -216,6 +216,8 @@ io.on("connection", async (socket) => {
         callerSocketId: socket.id,
       });
 
+      console.log(`[Socket Server] CALL_USER initiated. Caller: ${userId}, Callee: ${to}, Call ID: ${callId}, Type: ${callType}`);
+
       // Persist call record asynchronously (fire and forget for hot path)
       import("../Services/call.service.js").then(({ createCallRecord }) =>
         createCallRecord({ callId, callerId: userId, receiverId: to, type: callType })
@@ -237,6 +239,7 @@ io.on("connection", async (socket) => {
 
   // ── answerCall: Callee accepts ────────────────────────────────────────
   socket.on(SOCKET_EVENTS.ANSWER_CALL, async ({ to, answer, callId }) => {
+    console.log(`[Socket Server] ANSWER_CALL received from Callee: ${userId} for Caller: ${to}, Call ID: ${callId}`);
     try {
       emitToUser(to, SOCKET_EVENTS.CALL_ACCEPTED, { answer, callId });
 
@@ -251,6 +254,7 @@ io.on("connection", async (socket) => {
 
   // ── rejectCall: Callee rejects ────────────────────────────────────────
   socket.on(SOCKET_EVENTS.REJECT_CALL, async ({ to, callId }) => {
+    console.log(`[Socket Server] REJECT_CALL from Callee: ${userId} for Caller: ${to}, Call ID: ${callId}`);
     callSessions.delete(callId);
     emitToUser(to, SOCKET_EVENTS.CALL_REJECTED, { callId, reason: "rejected" });
 
@@ -261,6 +265,7 @@ io.on("connection", async (socket) => {
 
   // ── cancelCall: Caller cancels before answer ──────────────────────────
   socket.on(SOCKET_EVENTS.CANCEL_CALL, async ({ to, callId }) => {
+    console.log(`[Socket Server] CANCEL_CALL from Caller: ${userId} for Callee: ${to}, Call ID: ${callId}`);
     callSessions.delete(callId);
     emitToUser(to, SOCKET_EVENTS.CALL_CANCELLED, { callId });
 

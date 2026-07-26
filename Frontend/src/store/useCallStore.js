@@ -188,6 +188,7 @@ export const useCallStore = create((set, get) => ({
 
     // 1. Incoming Call
     socket.on("incomingCall", ({ from, offer, callType, callerInfo, callId }) => {
+      console.log("[useCallStore] incomingCall received:", { from, callId, callType });
       if (get().callState !== "idle") {
         // Already in a call → signal busy
         socket.emit("rejectCall", { to: String(from), callId });
@@ -215,9 +216,13 @@ export const useCallStore = create((set, get) => ({
 
     // 2. Call Accepted (caller receives answer from callee)
     socket.on("callAccepted", async ({ answer, callId }) => {
+      console.log("[useCallStore] callAccepted received:", { callId, currentStoreCallId: get().callId });
       ringtone.stop();
       if (autoCancelTimeout) { clearTimeout(autoCancelTimeout); autoCancelTimeout = null; }
-      if (get().callId !== callId) return; // stale event
+      if (get().callId !== callId) {
+        console.warn("[useCallStore] callAccepted ignored: callId mismatch. Store:", get().callId, "Event:", callId);
+        return; // stale event
+      }
 
       try {
         await webrtcService.setRemoteAnswer(answer);

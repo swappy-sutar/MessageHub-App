@@ -105,11 +105,36 @@ export const searchQuerySchema = z.object({
 
 // Google Auth Schema
 export const googleAuthSchema = z.object({
-  googleId: z.string({ required_error: "Google ID is required" }).min(1, "Google ID cannot be empty"),
-  email: z.string({ required_error: "Email is required" }).trim().lowercase().email("Invalid email address format"),
-  firstName: z.string({ required_error: "First name is required" }).trim().min(1, "First name cannot be empty"),
+  credential: z.string().min(1, "Credential cannot be empty").optional(),
+  googleId: z.string().min(1, "Google ID cannot be empty").optional(),
+  email: z.string().trim().lowercase().email("Invalid email address format").optional(),
+  firstName: z.string().trim().min(1, "First name cannot be empty").optional(),
   lastName: z.string().trim().optional().nullable(),
   profilePic: z.string().url().optional().or(z.string().length(0)).nullable(),
+}).superRefine((data, ctx) => {
+  if (!data.credential) {
+    if (!data.googleId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Google ID is required",
+        path: ["googleId"],
+      });
+    }
+    if (!data.email) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Email is required",
+        path: ["email"],
+      });
+    }
+    if (!data.firstName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "First name is required",
+        path: ["firstName"],
+      });
+    }
+  }
 });
 
 // User targetUserId parameter Schema

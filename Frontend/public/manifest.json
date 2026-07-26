@@ -1,0 +1,25 @@
+{
+  "name": "MessageHub",
+  "short_name": "MessageHub",
+  "description": "Real-time Messaging & WebRTC Video Calls",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1d232a",
+  "theme_color": "#1d232a",
+  "categories": ["social", "communication"],
+  "icons": [
+    {
+      "src": "/logo/messagehub-favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo/messagehub-favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -21,3 +21,7 @@ yarn-debug.log*
 # OS System Files
 .DS_Store
 Thumbs.db
+
+# Scratch and temporary test directories
+scratch/
+Backend/scratch/

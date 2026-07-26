@@ -8,6 +8,14 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/gif",
 ]);
 
+const ALLOWED_IMAGE_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif"
+]);
+
 /**
  * Validates uploaded file type, size, and presence
  * @param {Object} file - Express-fileupload file object
@@ -30,7 +38,16 @@ export const validateImageFile = (file, options = {}) => {
     };
   }
 
-  // 2. Strict file size check
+  // 2. Strict file extension check
+  const ext = file.name ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+  if (!ALLOWED_IMAGE_EXTENSIONS.has(ext)) {
+    return {
+      valid: false,
+      message: `Invalid image file extension (${ext || "none"}). Only .jpg, .jpeg, .png, .webp, and .gif are allowed.`,
+    };
+  }
+
+  // 3. Strict file size check
   if (file.size > maxSizeBytes) {
     return {
       valid: false,
@@ -50,6 +67,13 @@ const ALLOWED_VIDEO_TYPES = new Set([
   "video/x-msvideo",
 ]);
 
+const ALLOWED_VIDEO_EXTENSIONS = new Set([
+  ".mp4",
+  ".webm",
+  ".mov",
+  ".avi"
+]);
+
 const ALLOWED_DOC_TYPES = new Set([
   "application/pdf",
   "application/msword",
@@ -61,6 +85,16 @@ const ALLOWED_DOC_TYPES = new Set([
   "application/x-zip-compressed",
 ]);
 
+const ALLOWED_DOC_EXTENSIONS = new Set([
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".xls",
+  ".xlsx",
+  ".txt",
+  ".zip"
+]);
+
 export const validateVideoFile = (file, options = {}) => {
   if (!file) return { valid: false, message: "No video provided" };
   const maxSizeMB = options.maxSizeMB || 50;
@@ -70,6 +104,14 @@ export const validateVideoFile = (file, options = {}) => {
     return {
       valid: false,
       message: `Invalid video type (${file.mimetype || "unknown"}). Allowed formats: MP4, WebM, MOV, AVI.`,
+    };
+  }
+
+  const ext = file.name ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+  if (!ALLOWED_VIDEO_EXTENSIONS.has(ext)) {
+    return {
+      valid: false,
+      message: `Invalid video file extension (${ext || "none"}). Allowed extensions: .mp4, .webm, .mov, .avi`,
     };
   }
 
@@ -87,6 +129,21 @@ export const validateDocumentFile = (file, options = {}) => {
   if (!file) return { valid: false, message: "No document provided" };
   const maxSizeMB = options.maxSizeMB || 25;
   const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+  if (!file.mimetype || !ALLOWED_DOC_TYPES.has(file.mimetype.toLowerCase())) {
+    return {
+      valid: false,
+      message: `Invalid document type (${file.mimetype || "unknown"}). Allowed formats: PDF, Word, Excel, TXT, ZIP.`,
+    };
+  }
+
+  const ext = file.name ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "";
+  if (!ALLOWED_DOC_EXTENSIONS.has(ext)) {
+    return {
+      valid: false,
+      message: `Invalid document file extension (${ext || "none"}). Allowed extensions: .pdf, .doc, .docx, .xls, .xlsx, .txt, .zip`,
+    };
+  }
 
   if (file.size > maxSizeBytes) {
     return {

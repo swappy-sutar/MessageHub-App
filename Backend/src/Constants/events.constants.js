@@ -36,16 +36,32 @@ export const SOCKET_EVENTS = {
   GET_ONLINE_USERS: "getOnlineUsers",
   USER_LAST_SEEN: "userLastSeen",
 
-  // WebRTC Signaling
+  // WebRTC Signaling — full production event set
   CALL_USER: "callUser",
   INCOMING_CALL: "incomingCall",
   ANSWER_CALL: "answerCall",
   CALL_ACCEPTED: "callAccepted",
   REJECT_CALL: "rejectCall",
   CALL_REJECTED: "callRejected",
+  CANCEL_CALL: "cancelCall",
+  CALL_CANCELLED: "callCancelled",
   END_CALL: "endCall",
   CALL_ENDED: "callEnded",
+  CALL_FAILED: "callFailed",
+  CALL_BUSY: "callBusy",
+  CALL_TIMEOUT: "callTimeout",
+  CALL_CONNECTED: "callConnected",
   ICE_CANDIDATE: "iceCandidate",
+  ICE_RESTART: "iceRestart",
+  ICE_RESTART_OFFER: "iceRestartOffer",
+  NETWORK_QUALITY: "networkQuality",
+  // Media state signaling (sent alongside ICE/SDP for sync)
+  MUTE: "mute",
+  UNMUTE: "unmute",
+  VIDEO_ON: "videoOn",
+  VIDEO_OFF: "videoOff",
+  SCREEN_SHARE_START: "screenShareStart",
+  SCREEN_SHARE_STOP: "screenShareStop",
 
   // Room Subscription
   JOIN_ROOM: "joinRoom",

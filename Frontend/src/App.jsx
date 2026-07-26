@@ -15,11 +15,12 @@ import { MessageHubLoadingSpinner } from "./Components/MessageHubLogo";
 import InviteLinkHandler from "./Components/InviteLinkHandler";
 import SettingsDrawer from "./Components/SettingsDrawer";
 import ExitAppModal from "./Components/ExitAppModal";
+import MediaPermissionModal from "./Components/MediaPermissionModal";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
   const { theme } = useThemeStore();
-  const initCallListeners = useCallStore((state) => state.initCallListeners);
+  const { initCallListeners, showPermissionModal, permissionCallType, permissionCallback, cleanupCall } = useCallStore();
   const subscribeToMessages = useChatStore((state) => state.subscribeToMessages);
   const initPresence = usePresenceStore((state) => state.initPresence);
 
@@ -85,6 +86,15 @@ function App() {
 
       {/* Global WebRTC Call Modal Overlay */}
       <CallModal />
+
+      {/* Media Permission explanation and guidance modal */}
+      {showPermissionModal && (
+        <MediaPermissionModal
+          callType={permissionCallType}
+          onAllow={permissionCallback}
+          onCancel={cleanupCall}
+        />
+      )}
 
       {/* Mobile Back Navigation Exit Confirmation Modal */}
       <ExitAppModal />

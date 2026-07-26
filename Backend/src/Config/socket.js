@@ -152,51 +152,176 @@ io.on("connection", async (socket) => {
     }
   });
 
-  // --- WebRTC Signaling Handlers ---
-  socket.on(SOCKET_EVENTS.CALL_USER, async ({ to, offer, callType, callerInfo }) => {
+  // ─── WebRTC Signaling Handlers ────────────────────────────────────────
+  //
+  // Design principles:
+  //  1. Backend is SIGNALING ONLY — no media ever touches the server.
+  //  2. Every call creates a Call record for history & analytics.
+  //  3. Busy detection happens server-side (active callSessions map).
+  //  4. ICE candidates are relayed as-is; no validation burden on hot path.
+  //  5. Timeout cleanup is owned by the caller socket.
+  //
+  // In-memory active call sessions: callId → { callerId, receiverId }
+  // (Replaced by Redis in multi-node deployments — add presenceStore.setCall)
+  const callSessions = io.callSessions || (io.callSessions = new Map());
+
+  // ── callUser: Caller initiates a call ────────────────────────────────
+  socket.on(SOCKET_EVENTS.CALL_USER, async ({ to, offer, callType, callerInfo, callId }) => {
     try {
-      const receiverUser = await User.findById(to);
-      const senderUser = await User.findById(userId);
+      if (!to || !offer || !callId) return;
+
+      // Block check
+      const [receiverUser, senderUser] = await Promise.all([
+        User.findById(to).select("blockedUsers").lean(),
+        User.findById(userId).select("blockedUsers").lean(),
+      ]);
 
       const isBlocked =
         receiverUser?.blockedUsers?.some((id) => String(id) === String(userId)) ||
         senderUser?.blockedUsers?.some((id) => String(id) === String(to));
 
       if (isBlocked) {
-        socket.emit(SOCKET_EVENTS.CALL_REJECTED);
+        socket.emit(SOCKET_EVENTS.CALL_REJECTED, { callId, reason: "blocked" });
+        return;
+      }
+
+      // Busy check — receiver already in an active call
+      const receiverBusy = [...callSessions.values()].some(
+        (s) => s.callerId === String(to) || s.receiverId === String(to)
+      );
+
+      if (receiverBusy) {
+        socket.emit(SOCKET_EVENTS.CALL_BUSY, { callId });
         return;
       }
 
       const receiverSocketIds = await getReceiverSocketIDs(to);
-      if (receiverSocketIds.length > 0) {
-        emitToUser(to, SOCKET_EVENTS.INCOMING_CALL, {
-          from: userId,
-          offer,
-          callType,
-          callerInfo,
-        });
-      } else {
-        socket.emit(SOCKET_EVENTS.CALL_REJECTED);
+      if (receiverSocketIds.length === 0) {
+        // User offline → immediate missed call
+        socket.emit(SOCKET_EVENTS.CALL_REJECTED, { callId, reason: "offline" });
+        try {
+          const { createCallRecord, missCallRecord } = await import("../Services/call.service.js");
+          const record = await createCallRecord({ callerId: userId, receiverId: to, type: callType });
+          await missCallRecord(record.callId);
+        } catch (_) {}
+        return;
       }
+
+      // Register session
+      callSessions.set(callId, {
+        callId,
+        callerId: String(userId),
+        receiverId: String(to),
+        type: callType,
+        callerSocketId: socket.id,
+      });
+
+      // Persist call record asynchronously (fire and forget for hot path)
+      import("../Services/call.service.js").then(({ createCallRecord }) =>
+        createCallRecord({ callerId: userId, receiverId: to, type: callType })
+      ).catch(() => {});
+
+      // Deliver to all receiver tabs/devices
+      emitToUser(to, SOCKET_EVENTS.INCOMING_CALL, {
+        from: userId,
+        offer,
+        callType,
+        callerInfo,
+        callId,
+      });
     } catch (err) {
-      socket.emit(SOCKET_EVENTS.CALL_REJECTED);
+      console.error("[CALL_USER] error:", err.message);
+      socket.emit(SOCKET_EVENTS.CALL_FAILED, { callId, reason: "server_error" });
     }
   });
 
-  socket.on(SOCKET_EVENTS.ANSWER_CALL, ({ to, answer }) => {
-    emitToUser(to, SOCKET_EVENTS.CALL_ACCEPTED, { answer });
+  // ── answerCall: Callee accepts ────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.ANSWER_CALL, async ({ to, answer, callId }) => {
+    try {
+      emitToUser(to, SOCKET_EVENTS.CALL_ACCEPTED, { answer, callId });
+
+      // Persist accept
+      import("../Services/call.service.js").then(({ acceptCallRecord }) =>
+        acceptCallRecord(callId, userId)
+      ).catch(() => {});
+    } catch (err) {
+      console.error("[ANSWER_CALL] error:", err.message);
+    }
   });
 
-  socket.on(SOCKET_EVENTS.REJECT_CALL, ({ to }) => {
-    emitToUser(to, SOCKET_EVENTS.CALL_REJECTED);
+  // ── rejectCall: Callee rejects ────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.REJECT_CALL, async ({ to, callId }) => {
+    callSessions.delete(callId);
+    emitToUser(to, SOCKET_EVENTS.CALL_REJECTED, { callId, reason: "rejected" });
+
+    import("../Services/call.service.js").then(({ rejectCallRecord }) =>
+      rejectCallRecord(callId)
+    ).catch(() => {});
   });
 
-  socket.on(SOCKET_EVENTS.END_CALL, ({ to }) => {
-    emitToUser(to, SOCKET_EVENTS.CALL_ENDED);
+  // ── cancelCall: Caller cancels before answer ──────────────────────────
+  socket.on(SOCKET_EVENTS.CANCEL_CALL, async ({ to, callId }) => {
+    callSessions.delete(callId);
+    emitToUser(to, SOCKET_EVENTS.CALL_CANCELLED, { callId });
+
+    import("../Services/call.service.js").then(({ missCallRecord }) =>
+      missCallRecord(callId)
+    ).catch(() => {});
   });
 
-  socket.on(SOCKET_EVENTS.ICE_CANDIDATE, ({ to, candidate }) => {
-    emitToUser(to, SOCKET_EVENTS.ICE_CANDIDATE, { candidate });
+  // ── endCall: Either party ends the call ──────────────────────────────
+  socket.on(SOCKET_EVENTS.END_CALL, async ({ to, callId }) => {
+    callSessions.delete(callId);
+    emitToUser(to, SOCKET_EVENTS.CALL_ENDED, { callId });
+
+    import("../Services/call.service.js").then(({ endCallRecord }) =>
+      endCallRecord(callId, userId)
+    ).catch(() => {});
+  });
+
+  // ── ICE candidate relay ───────────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.ICE_CANDIDATE, ({ to, candidate, callId }) => {
+    if (!to || !candidate) return;
+    emitToUser(to, SOCKET_EVENTS.ICE_CANDIDATE, { candidate, callId });
+  });
+
+  // ── ICE Restart: caller sends a new offer after connection failure ────
+  socket.on(SOCKET_EVENTS.ICE_RESTART, async ({ to, offer, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.ICE_RESTART_OFFER, { offer, callId });
+
+    import("../Services/call.service.js").then(({ recordIceRestart }) =>
+      recordIceRestart(callId)
+    ).catch(() => {});
+  });
+
+  // ── Media state relays (mute/video/screen) ────────────────────────────
+  socket.on(SOCKET_EVENTS.MUTE, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.MUTE, { callId, from: userId });
+  });
+
+  socket.on(SOCKET_EVENTS.UNMUTE, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.UNMUTE, { callId, from: userId });
+  });
+
+  socket.on(SOCKET_EVENTS.VIDEO_OFF, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.VIDEO_OFF, { callId, from: userId });
+  });
+
+  socket.on(SOCKET_EVENTS.VIDEO_ON, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.VIDEO_ON, { callId, from: userId });
+  });
+
+  socket.on(SOCKET_EVENTS.SCREEN_SHARE_START, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.SCREEN_SHARE_START, { callId, from: userId });
+  });
+
+  socket.on(SOCKET_EVENTS.SCREEN_SHARE_STOP, ({ to, callId }) => {
+    emitToUser(to, SOCKET_EVENTS.SCREEN_SHARE_STOP, { callId, from: userId });
+  });
+
+  // ── Network quality relay ─────────────────────────────────────────────
+  socket.on(SOCKET_EVENTS.NETWORK_QUALITY, ({ to, callId, quality }) => {
+    emitToUser(to, SOCKET_EVENTS.NETWORK_QUALITY, { callId, quality, from: userId });
   });
 
   // --- Disconnect Handler ---
@@ -212,6 +337,23 @@ io.on("connection", async (socket) => {
           await User.findByIdAndUpdate(userId, { lastSeen: now });
         } catch (e) {}
         io.emit(SOCKET_EVENTS.USER_LAST_SEEN, { userId, lastSeen: now });
+
+        // ── Cleanup any active call where this user was a participant ──
+        for (const [callId, session] of callSessions.entries()) {
+          if (session.callerId === String(userId) || session.receiverId === String(userId)) {
+            callSessions.delete(callId);
+            const peerId = session.callerId === String(userId)
+              ? session.receiverId
+              : session.callerId;
+            emitToUser(peerId, SOCKET_EVENTS.CALL_ENDED, {
+              callId,
+              reason: "peer_disconnected",
+            });
+            import("../Services/call.service.js").then(({ endCallRecord }) =>
+              endCallRecord(callId, userId)
+            ).catch(() => {});
+          }
+        }
       }
     }
     await broadcastOnlineUsers();

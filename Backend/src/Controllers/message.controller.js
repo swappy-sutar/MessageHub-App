@@ -17,8 +17,8 @@ const getLegacyKeys = () => {
   if (legacyEnv) {
     keys.push(...legacyEnv.split(",").map(k => k.trim()));
   } else {
-    // Non-sensitive dev fallback keys
-    keys.push("messagehub_secret_encryption_key_2026", "secretKey");
+    // Non-sensitive dev fallback secure keys
+    keys.push("d8b5a32497a15cdfb36c0e817bfad9b62ef563e414c2780ab5d87a9bfefc0612", "7f0c1a938de54f0a719c836dbf5c2a104bdeef628ab2c3104e76d912dcbfe384");
   }
   return [...new Set(keys.filter(Boolean))];
 };

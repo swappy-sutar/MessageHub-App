@@ -14,13 +14,14 @@
   --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
 }
 
-html, body {
+html, body, #root {
   box-sizing: border-box;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
+  background-color: var(--fallback-b1, oklch(var(--b1, 0.18 0 0)));
 }
 
 /* Hardware GPU acceleration helper */

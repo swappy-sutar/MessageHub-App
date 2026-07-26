@@ -518,6 +518,12 @@ const MessageInput = () => {
             placeholder={editingMessage ? "Edit message..." : "Message"}
             value={text}
             onChange={(e) => handleTyping(e.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="sentences"
+            spellCheck="true"
+            data-form-type="other"
+            name="chat_message_text_input"
           />
 
           {!editingMessage && (

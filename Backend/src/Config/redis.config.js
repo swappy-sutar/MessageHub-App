@@ -26,22 +26,24 @@ class MemoryStoreFallback {
   }
 
   async addSocket(userId, socketId) {
-    if (!this.userSockets.has(userId)) {
-      this.userSockets.set(userId, new Set());
+    const sId = String(userId);
+    if (!this.userSockets.has(sId)) {
+      this.userSockets.set(sId, new Set());
     }
-    this.userSockets.get(userId).add(socketId);
-    if (!this.invisibleUsers.has(userId)) {
-      this.onlineUsers.add(userId);
+    this.userSockets.get(sId).add(socketId);
+    if (!this.invisibleUsers.has(sId)) {
+      this.onlineUsers.add(sId);
     }
   }
 
   async removeSocket(userId, socketId) {
-    const sockets = this.userSockets.get(userId);
+    const sId = String(userId);
+    const sockets = this.userSockets.get(sId);
     if (sockets) {
       sockets.delete(socketId);
       if (sockets.size === 0) {
-        this.userSockets.delete(userId);
-        this.onlineUsers.delete(userId);
+        this.userSockets.delete(sId);
+        this.onlineUsers.delete(sId);
       }
     }
   }
@@ -149,41 +151,44 @@ export const connectRedis = async () => {
 // Redis / Memory Presence Helper API
 export const presenceStore = {
   async addSocketMapping(userId, socketId) {
+    const sId = String(userId);
     if (isRedisConnected && redisClient) {
       try {
-        await redisClient.sadd(`user:sockets:${userId}`, socketId);
-        const isInvisible = await redisClient.sismember("invisible:users", userId);
+        await redisClient.sadd(`user:sockets:${sId}`, socketId);
+        const isInvisible = await redisClient.sismember("invisible:users", sId);
         if (!isInvisible) {
-          await redisClient.sadd("online:users", userId);
+          await redisClient.sadd("online:users", sId);
         }
         return;
       } catch (e) {}
     }
-    return memoryStore.addSocket(userId, socketId);
+    return memoryStore.addSocket(sId, socketId);
   },
 
   async removeSocketMapping(userId, socketId) {
+    const sId = String(userId);
     if (isRedisConnected && redisClient) {
       try {
-        await redisClient.srem(`user:sockets:${userId}`, socketId);
-        const count = await redisClient.scard(`user:sockets:${userId}`);
+        await redisClient.srem(`user:sockets:${sId}`, socketId);
+        const count = await redisClient.scard(`user:sockets:${sId}`);
         if (count === 0) {
-          await redisClient.srem("online:users", userId);
+          await redisClient.srem("online:users", sId);
         }
         return;
       } catch (e) {}
     }
-    return memoryStore.removeSocket(userId, socketId);
+    return memoryStore.removeSocket(sId, socketId);
   },
 
   async getSocketIDs(userId) {
+    const sId = String(userId);
     if (isRedisConnected && redisClient) {
       try {
-        const sockets = await redisClient.smembers(`user:sockets:${userId}`);
+        const sockets = await redisClient.smembers(`user:sockets:${sId}`);
         return sockets || [];
       } catch (e) {}
     }
-    return memoryStore.getSocketIds(userId);
+    return memoryStore.getSocketIds(sId);
   },
 
   async getOnlineUsers() {

@@ -31,7 +31,8 @@ export const usePresenceStore = create((set, get) => ({
     socket.off("userLastSeen");
 
     socket.on("getOnlineUsers", (users) => {
-      set({ onlineUsers: users });
+      const stringUserIds = Array.isArray(users) ? users.map((id) => String(id)) : [];
+      set({ onlineUsers: stringUserIds });
     });
 
     socket.on("userLastSeen", ({ userId, lastSeen }) => {

@@ -259,6 +259,9 @@ const useAuthStore = create((set, get) => ({
     socket.on(SOCKET_EVENTS.GET_ONLINE_USERS, (userIds) => {
       const stringUserIds = Array.isArray(userIds) ? userIds.map((id) => String(id)) : [];
       set({ onlineUsers: stringUserIds });
+      try {
+        usePresenceStore.getState().setOnlineUsers(stringUserIds);
+      } catch (e) {}
     });
 
     socket.on("connect_error", (err) => {

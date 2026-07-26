@@ -36,6 +36,7 @@ import {
   Phone,
   Flag,
   FlaskConical,
+  RefreshCw,
 } from "lucide-react";
 import { THEMES } from "../constants/index.js";
 import { WALLPAPER_COLORS } from "../store/useThemeStore.js";
@@ -196,6 +197,18 @@ const SettingsDrawer = () => {
       subtitle: "Help centre, contact us, privacy policy",
       icon: HelpCircle,
       action: () => setActiveSubView("help"),
+    },
+    {
+      id: "reload",
+      title: "Reload Application",
+      subtitle: "Refresh app session & clear memory cache",
+      icon: RefreshCw,
+      action: () => {
+        toast.success("Reloading MessageHub application... 🔄");
+        setTimeout(() => {
+          window.location.reload();
+        }, 400);
+      },
     },
     {
       id: "logout",

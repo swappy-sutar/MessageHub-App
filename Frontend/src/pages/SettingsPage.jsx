@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Shield,
   Sparkles,
+  RefreshCw,
 } from "lucide-react";
 import { THEMES } from "../constants/index.js";
 import { Link, useNavigate } from "react-router-dom";
@@ -91,6 +92,18 @@ function SettingsPage() {
       subtitle: "Message, group & call tones",
       icon: Bell,
       action: () => toast.success("Notification preferences saved"),
+    },
+    {
+      id: "reload",
+      title: "Reload Website",
+      subtitle: "Refresh app session & clear memory cache",
+      icon: RefreshCw,
+      action: () => {
+        toast.success("Reloading MessageHub website... 🔄");
+        setTimeout(() => {
+          window.location.reload();
+        }, 400);
+      },
     },
   ];
 

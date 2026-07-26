@@ -20,7 +20,6 @@
  */
 
 import { create } from "zustand";
-import { randomUUID } from "crypto"; // Available in modern browsers via globalThis
 import toast from "../utils/toast.js";
 import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";

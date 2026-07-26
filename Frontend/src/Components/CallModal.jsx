@@ -150,7 +150,8 @@ const CallModal = () => {
           remote audio stream can be bound before the connected view renders.
           Video elements use callback refs instead — no hidden duplicates.
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="hidden" aria-hidden="true">
+      {/* Visually hidden but present in the DOM layout so the browser engine doesn't suspend audio decoding */}
+      <div className="absolute opacity-0 pointer-events-none w-px h-px overflow-hidden" aria-hidden="true">
         <audio ref={remoteAudioRef} autoPlay playsInline />
       </div>
 
@@ -213,7 +214,7 @@ const CallModal = () => {
                 <div onClick={toggleMinimized}
                   className="relative h-32 w-full rounded-2xl bg-black/60 overflow-hidden cursor-pointer group flex items-center justify-center border border-white/10">
                   {callType === "video" && remoteStream ? (
-                    <video ref={setMiniRemoteVideoRef} autoPlay playsInline
+                    <video ref={setMiniRemoteVideoRef} autoPlay playsInline muted
                       className="w-full h-full object-cover" />
                   ) : (
                     <div className="flex flex-col items-center gap-2">
@@ -374,7 +375,7 @@ const CallModal = () => {
                         {/* MAIN view */}
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-950">
                           {/* Remote video (default main) */}
-                          <video ref={setRemoteVideoRef} autoPlay playsInline
+                          <video ref={setRemoteVideoRef} autoPlay playsInline muted
                             className={`w-full h-full object-cover ${isSwappedVideo ? "hidden" : "block"}`} />
                           {/* Local video (main when swapped) */}
                           <video ref={setLocalVideoRef} autoPlay playsInline muted

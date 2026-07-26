@@ -44,13 +44,19 @@ const CallModal = () => {
     toggleSwappedVideo,
     switchCamera,
     initCallListeners,
+    setRemoteAudioEl,
   } = useCallStore();
 
   const socket = useAuthStore((state) => state.socket);
 
   // ── Audio ref — always-mounted hidden <audio> element ────────────────
-  // (Only audio needs to be always-mounted; video elements use callback refs.)
   const remoteAudioRef = useRef(null);
+
+  // Set the element in the store when it is mounted
+  const setAudioRef = useCallback((el) => {
+    remoteAudioRef.current = el;
+    setRemoteAudioEl(el);
+  }, [setRemoteAudioEl]);
 
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -152,7 +158,7 @@ const CallModal = () => {
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       {/* Visually hidden but present in the DOM layout so the browser engine doesn't suspend audio decoding */}
       <div className="absolute opacity-0 pointer-events-none w-px h-px overflow-hidden" aria-hidden="true">
-        <audio ref={remoteAudioRef} autoPlay playsInline />
+        <audio ref={setAudioRef} autoPlay playsInline />
       </div>
 
       {/* Nothing else rendered when idle */}

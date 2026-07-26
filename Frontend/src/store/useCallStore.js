@@ -133,6 +133,7 @@ export const useCallStore = create((set, get) => ({
   showPermissionModal: false, // Whether to show MediaPermissionModal
   permissionCallType: "video",
   permissionCallback: null,
+  remoteAudioEl:  null,
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
   cleanupCall: () => {
@@ -171,6 +172,8 @@ export const useCallStore = create((set, get) => ({
       permissionCallback: null,
     });
   },
+
+  setRemoteAudioEl: (el) => set({ remoteAudioEl: el }),
 
   // ── Socket Listener Initialization ───────────────────────────────────────
   initCallListeners: () => {
@@ -329,6 +332,12 @@ export const useCallStore = create((set, get) => ({
     if (!targetUser?._id)   return;
     if (get().callState !== "idle") return toast.error("Already in a call.");
 
+    // Unlock remote audio synchronously under the user click gesture context
+    const { remoteAudioEl } = get();
+    if (remoteAudioEl) {
+      remoteAudioEl.play().catch(() => {});
+    }
+
     // Check permissions
     if (!bypassPermissionCheck) {
       let hasPermission = false;
@@ -451,6 +460,12 @@ export const useCallStore = create((set, get) => ({
     const { incomingCallData } = get();
     const socket = useAuthStore.getState().socket;
     if (!incomingCallData || !socket) return;
+
+    // Unlock remote audio synchronously under the user click gesture context
+    const { remoteAudioEl } = get();
+    if (remoteAudioEl) {
+      remoteAudioEl.play().catch(() => {});
+    }
 
     const { from, offer, callType, callId } = incomingCallData;
 

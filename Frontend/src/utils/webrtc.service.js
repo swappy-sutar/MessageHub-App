@@ -65,8 +65,6 @@ export const AUDIO_CONSTRAINTS = {
   echoCancellation: true,
   noiseSuppression: true,
   autoGainControl:  true,
-  sampleRate:       48000,
-  channelCount:     1,
 };
 
 // ─── Video constraints by quality tier ───────────────────────────────────────

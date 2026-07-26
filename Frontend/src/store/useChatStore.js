@@ -478,7 +478,7 @@ export const useChatStore = create((set, get) => ({
       const contactUser = get().users.find((u) => String(u._id) === contactId);
       const contactName = contactUser ? `${contactUser.firstName} ${contactUser.lastName}` : "Someone";
 
-      if (!isMyOwnMessage && (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== contactId)) {
+      if (!isMyOwnMessage) {
         pushNotifications.sendDesktopNotification({
           title: contactName,
           body: msgPreview || "Sent an attachment",

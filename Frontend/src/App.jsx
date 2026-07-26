@@ -14,6 +14,7 @@ import { usePresenceStore } from "./store/usePresenceStore";
 import { MessageHubLoadingSpinner } from "./Components/MessageHubLogo";
 import InviteLinkHandler from "./Components/InviteLinkHandler";
 import SettingsDrawer from "./Components/SettingsDrawer";
+import ExitAppModal from "./Components/ExitAppModal";
 
 function App() {
   const { authUser, checkAuth, isCheckingAuth, socket } = useAuthStore();
@@ -84,6 +85,9 @@ function App() {
 
       {/* Global WebRTC Call Modal Overlay */}
       <CallModal />
+
+      {/* Mobile Back Navigation Exit Confirmation Modal */}
+      <ExitAppModal />
     </div>
   );
 }

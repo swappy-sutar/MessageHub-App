@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../Components/Sidebar";
 import { useChatStore } from "../store/useChatStore";
+import { useMobileBackHandler } from "../hooks/useMobileBackHandler";
 import ChatContainer from "../Components/ChatContainer";
 import NoChatSelected from "../Components/NoChatSelected";
 import BottomNav from "../Components/BottomNav";
@@ -18,9 +19,13 @@ function HomePage() {
     setContactInfoOpen,
     isSearchOpen,
     setSearchOpen,
+    activeTab,
+    setActiveTab,
   } = useChatStore();
 
-  const [activeTab, setActiveTab] = useState("chats");
+  // Initialize mobile navigation back button handler
+  useMobileBackHandler();
+
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {

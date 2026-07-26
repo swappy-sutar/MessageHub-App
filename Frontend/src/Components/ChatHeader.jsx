@@ -60,7 +60,13 @@ const ChatHeader = () => {
       {/* Left: Back Button + Avatar + Info */}
       <div className="flex items-center gap-2.5">
         <button
-          onClick={() => setSelectedUser(null)}
+          onClick={() => {
+            if (window.history.state?.mhView === "chat") {
+              window.history.back();
+            } else {
+              setSelectedUser(null);
+            }
+          }}
           className="lg:hidden btn btn-sm btn-ghost btn-circle text-base-content/70 hover:text-base-content"
           title="Back to contacts"
         >

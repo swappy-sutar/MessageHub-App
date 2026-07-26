@@ -56,6 +56,13 @@ export const useChatStore = create((set, get) => ({
   searchResults: [],
   pinnedMessages: [],
 
+  // Mobile Back Navigation & Tab State
+  isExitModalOpen: false,
+  activeTab: "chats", // 'chats' | 'calls' | 'updates'
+
+  setExitModalOpen: (isOpen) => set({ isExitModalOpen: isOpen }),
+  setActiveTab: (tab) => set({ activeTab: tab }),
+
   // Setters & UI drawer toggles
   setSettingsOpen: (isOpen) =>
     set({ isSettingsOpen: isOpen, isSearchOpen: false, isContactInfoOpen: false }),

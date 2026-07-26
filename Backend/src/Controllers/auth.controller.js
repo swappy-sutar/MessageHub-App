@@ -34,19 +34,11 @@ const parseGoogleCredential = (credential) => {
 // Helper to generate unique invite code (e.g. MH-7X8K2M)
 const generateUniqueInviteCode = async () => {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  let isUnique = false;
-
-  while (!isUnique) {
-    let randomPart = "";
-    for (let i = 0; i < 6; i++) {
-      randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    code = `MH-${randomPart}`;
-    const existing = await User.findOne({ inviteCode: code });
-    if (!existing) isUnique = true;
+  let randomPart = "";
+  for (let i = 0; i < 6; i++) {
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return code;
+  return `MH-${randomPart}`;
 };
 
 const signupUser = async (req, res) => {

@@ -35,9 +35,10 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes window
-  max: 20, // Max 20 auth attempts per 15 minutes to prevent brute-force attacks
+  max: 100, // Max 100 auth attempts per 15 minutes
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.path === "/check-auth" || req.path === "/refresh-token",
   message: {
     success: false,
     message: "Too many authentication attempts from this IP, please try again after 15 minutes.",

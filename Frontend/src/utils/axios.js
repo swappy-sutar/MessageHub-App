@@ -65,6 +65,7 @@ axiosInstance.interceptors.response.use(
       !originalRequest._retry &&
       !originalRequest.url.includes("/auth/login") &&
       !originalRequest.url.includes("/auth/signup") &&
+      !originalRequest.url.includes("/auth/google") &&
       !originalRequest.url.includes("/auth/refresh-token")
     ) {
       if (isRefreshing) {

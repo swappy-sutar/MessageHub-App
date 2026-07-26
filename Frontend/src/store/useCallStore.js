@@ -13,11 +13,27 @@ const ICE_SERVERS = {
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    { urls: "stun:global.stun.twilio.com:3478" },
   ],
 };
 
 let callTimerInterval = null;
 let autoCancelTimeout = null;
+let pendingIceCandidates = [];
+
+const processPendingIceCandidates = async (pc) => {
+  if (!pc || !pc.remoteDescription) return;
+  while (pendingIceCandidates.length > 0) {
+    const cand = pendingIceCandidates.shift();
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(cand));
+    } catch (e) {
+      console.error("Error processing queued ICE candidate:", e);
+    }
+  }
+};
 
 // Helper to log call outcome as a chat message
 const sendCallLogMessage = async (type, status, durationSec = 0, targetUserObj = null) => {
@@ -84,7 +100,7 @@ export const useCallStore = create((set, get) => ({
   peerConnection: null,
   isCaller: false,
 
-  // Helper to cleanup media, timers, ringtone and peer connection
+    // Helper to cleanup media, timers, ringtone and peer connection
   cleanupCall: () => {
     ringtone.stop();
 
@@ -97,6 +113,8 @@ export const useCallStore = create((set, get) => ({
       clearTimeout(autoCancelTimeout);
       autoCancelTimeout = null;
     }
+
+    pendingIceCandidates = [];
 
     const { localStream, peerConnection } = get();
 
@@ -177,6 +195,7 @@ export const useCallStore = create((set, get) => ({
           await peerConnection.setRemoteDescription(
             new RTCSessionDescription({ type: answer.type, sdp: answer.sdp })
           );
+          await processPendingIceCandidates(peerConnection);
 
           // Start call duration timer
           set({ callState: "connected", callDuration: 0 });
@@ -222,10 +241,14 @@ export const useCallStore = create((set, get) => ({
     socket.on("iceCandidate", async ({ candidate }) => {
       const { peerConnection } = get();
       if (peerConnection && candidate) {
-        try {
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (err) {
-          console.error("Error adding ICE candidate:", err);
+        if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+          try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {
+            console.error("Error adding ICE candidate:", err);
+          }
+        } else {
+          pendingIceCandidates.push(candidate);
         }
       }
     });
@@ -278,9 +301,13 @@ export const useCallStore = create((set, get) => ({
 
       // Remote stream handler
       pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          set({ remoteStream: event.streams[0] });
+        let stream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+        if (!stream) {
+          const currentRemote = get().remoteStream || new MediaStream();
+          currentRemote.addTrack(event.track);
+          stream = currentRemote;
         }
+        set({ remoteStream: stream });
       };
 
       // ICE candidate handler
@@ -359,9 +386,13 @@ export const useCallStore = create((set, get) => ({
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          set({ remoteStream: event.streams[0] });
+        let stream = (event.streams && event.streams[0]) ? event.streams[0] : null;
+        if (!stream) {
+          const currentRemote = get().remoteStream || new MediaStream();
+          currentRemote.addTrack(event.track);
+          stream = currentRemote;
         }
+        set({ remoteStream: stream });
       };
 
       pc.onicecandidate = (event) => {
@@ -379,6 +410,7 @@ export const useCallStore = create((set, get) => ({
           sdp: incomingCallData.offer.sdp,
         })
       );
+      await processPendingIceCandidates(pc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 

@@ -57,15 +57,17 @@ const CallModal = () => {
   }, [localStream]);
 
   useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.muted = false;
+      remoteAudioRef.current.volume = 1.0;
+      remoteAudioRef.current.play().catch((e) => console.error("Remote audio play error:", e));
+    }
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
       remoteVideoRef.current.play().catch((e) => console.error("Remote video play error:", e));
     }
-    if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch((e) => console.error("Remote audio play error:", e));
-    }
-  }, [remoteStream]);
+  }, [remoteStream, callState]);
 
   if (callState === "idle") return null;
 
@@ -150,6 +152,9 @@ const CallModal = () => {
       {/* ── CONNECTED CALL VIEW ── */}
       {callState === "connected" && (
         <div className="relative w-full h-full sm:max-w-4xl sm:h-[85vh] bg-base-300 rounded-none sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col border-0 sm:border border-base-300">
+          {/* Always mounted hidden audio tag to guarantee remote voice playback */}
+          <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+
           {/* Header Info Overlay */}
           <div className="absolute top-4 left-4 z-30 flex items-center gap-2.5 bg-base-100/80 backdrop-blur-md px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full border border-base-300 shadow-lg">
             <span className="size-2 rounded-full bg-success animate-pulse" />

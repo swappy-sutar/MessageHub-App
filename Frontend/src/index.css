@@ -22,6 +22,23 @@ html, body, #root {
   scroll-behavior: smooth;
   overscroll-behavior-y: none;
   background-color: var(--fallback-b1, oklch(var(--b1, 0.18 0 0)));
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+input, textarea, [contenteditable="true"], .select-text {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 
 /* Hardware GPU acceleration helper */

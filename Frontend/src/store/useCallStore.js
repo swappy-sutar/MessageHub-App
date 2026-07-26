@@ -96,6 +96,9 @@ export const useCallStore = create((set, get) => ({
   isMuted: false,
   isVideoOff: false,
   isScreenSharing: false,
+  isMinimized: false,
+  isSwappedVideo: false,
+  facingMode: "user", // "user" | "environment"
   callDuration: 0,
   peerConnection: null,
   isCaller: false,
@@ -138,6 +141,9 @@ export const useCallStore = create((set, get) => ({
       isMuted: false,
       isVideoOff: false,
       isScreenSharing: false,
+      isMinimized: false,
+      isSwappedVideo: false,
+      facingMode: "user",
       callDuration: 0,
       peerConnection: null,
       isCaller: false,
@@ -525,6 +531,72 @@ export const useCallStore = create((set, get) => ({
       }
     } catch (err) {
       console.error("Screen share error:", err);
+    }
+  },
+
+  // Toggle Minimized Call Widget
+  toggleMinimized: () => set((state) => ({ isMinimized: !state.isMinimized })),
+
+  // Toggle Swapped Main / Secondary Video Streams
+  toggleSwappedVideo: () => set((state) => ({ isSwappedVideo: !state.isSwappedVideo })),
+
+  // Switch Front/Back Camera (Mobile Device Camera Flip)
+  switchCamera: async () => {
+    const { localStream, peerConnection, facingMode, isVideoOff } = get();
+    if (!localStream || isVideoOff) return;
+
+    try {
+      const nextFacingMode = facingMode === "user" ? "environment" : "user";
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: nextFacingMode } },
+        audio: false,
+      });
+
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      const oldVideoTrack = localStream.getVideoTracks()[0];
+
+      if (oldVideoTrack) {
+        localStream.removeTrack(oldVideoTrack);
+        oldVideoTrack.stop();
+      }
+
+      localStream.addTrack(newVideoTrack);
+
+      if (peerConnection) {
+        const sender = peerConnection.getSenders().find((s) => s.track && s.track.kind === "video");
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+        }
+      }
+
+      set({ facingMode: nextFacingMode, localStream });
+      toast.success(`Switched camera to ${nextFacingMode === "user" ? "front" : "rear"}`);
+    } catch (err) {
+      console.warn("Exact facingMode switch failed, trying fallback:", err);
+      try {
+        const nextFacingMode = facingMode === "user" ? "environment" : "user";
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: nextFacingMode },
+          audio: false,
+        });
+        const newVideoTrack = fallbackStream.getVideoTracks()[0];
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          localStream.removeTrack(oldVideoTrack);
+          oldVideoTrack.stop();
+        }
+        localStream.addTrack(newVideoTrack);
+        if (peerConnection) {
+          const sender = peerConnection.getSenders().find((s) => s.track && s.track.kind === "video");
+          if (sender) {
+            await sender.replaceTrack(newVideoTrack);
+          }
+        }
+        set({ facingMode: nextFacingMode, localStream });
+      } catch (fallbackErr) {
+        console.error("Camera switch failed:", fallbackErr);
+        toast.error("Camera flip not available on this device.");
+      }
     }
   },
 }));

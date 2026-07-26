@@ -377,3 +377,59 @@ input, textarea, [contenteditable="true"], .select-text {
     font-size: 13.5px !important;
   }
 }
+
+/* Call Modal Visualizer & Glow Effects */
+@keyframes soundWaveBar {
+  0%, 100% {
+    transform: scaleY(0.35);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.animate-sound-wave {
+  animation: soundWaveBar 1.2s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+@keyframes callRingPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 25px rgba(99, 102, 241, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+.animate-call-ring {
+  animation: callRingPulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.call-glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.call-control-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.call-control-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.call-control-btn:active {
+  transform: translateY(0) scale(0.95);
+}

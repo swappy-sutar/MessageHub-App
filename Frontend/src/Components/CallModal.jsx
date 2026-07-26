@@ -48,13 +48,9 @@ const CallModal = () => {
 
   const socket = useAuthStore((state) => state.socket);
 
-  // These refs are always mounted – never hidden behind conditional rendering.
-  // Keeping them stable is the key to reliable stream playback.
-  const localVideoRef  = useRef(null);
-  const remoteVideoRef = useRef(null);
+  // ── Audio ref — always-mounted hidden <audio> element ────────────────
+  // (Only audio needs to be always-mounted; video elements use callback refs.)
   const remoteAudioRef = useRef(null);
-  // Separate mini video for the desktop floating widget
-  const miniRemoteVideoRef = useRef(null);
 
   const [isControlsVisible, setIsControlsVisible] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -65,42 +61,45 @@ const CallModal = () => {
     if (socket) initCallListeners();
   }, [socket, initCallListeners]);
 
-  // ── LOCAL stream → local <video> ─────────────────────────────────────
+  // ── REMOTE AUDIO — bind stream imperatively whenever it changes ───────
   useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
+    if (!remoteStream || !remoteAudioRef.current) return;
+    remoteAudioRef.current.srcObject = remoteStream;
+    remoteAudioRef.current.muted  = false; // imperative, bypasses React muted attr bug
+    remoteAudioRef.current.volume = 1.0;
+    remoteAudioRef.current
+      .play()
+      .catch((e) => console.warn("Remote audio play blocked:", e));
+  }, [remoteStream]);
+
+  // ── CALLBACK REFS for video elements ─────────────────────────────────
+  // useCallback ensures the ref callback is called again whenever the stream
+  // changes (new function ref → React unmounts old ref with null, then calls
+  // new ref with the element → srcObject is re-assigned to the live element).
+
+  // Remote video main view
+  const setRemoteVideoRef = useCallback((el) => {
+    if (!el) return;
+    if (remoteStream && el.srcObject !== remoteStream) {
+      el.srcObject = remoteStream;
+      el.play().catch((e) => console.warn("Remote video play blocked:", e));
+    }
+  }, [remoteStream]);
+
+  // Local video (self-view / PiP)
+  const setLocalVideoRef = useCallback((el) => {
+    if (!el) return;
+    if (localStream && el.srcObject !== localStream) {
+      el.srcObject = localStream;
     }
   }, [localStream]);
 
-  // ── REMOTE stream → remote <video> + <audio> ─────────────────────────
-  // This effect runs whenever remoteStream changes (new ontrack from peer).
-  useEffect(() => {
-    if (!remoteStream) return;
-
-    // Audio
-    if (remoteAudioRef.current) {
-      remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.muted  = false;   // imperative, bypasses React attr bug
-      remoteAudioRef.current.volume = 1.0;
-      remoteAudioRef.current
-        .play()
-        .catch((e) => console.warn("Remote audio play blocked:", e));
-    }
-
-    // Main remote video
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current
-        .play()
-        .catch((e) => console.warn("Remote video play blocked:", e));
-    }
-
-    // Desktop floating-widget mini preview
-    if (miniRemoteVideoRef.current) {
-      miniRemoteVideoRef.current.srcObject = remoteStream;
-      miniRemoteVideoRef.current
-        .play()
-        .catch((e) => console.warn("Mini remote video play blocked:", e));
+  // Mini remote video for desktop floating widget
+  const setMiniRemoteVideoRef = useCallback((el) => {
+    if (!el) return;
+    if (remoteStream && el.srcObject !== remoteStream) {
+      el.srcObject = remoteStream;
+      el.play().catch((e) => console.warn("Mini remote video play blocked:", e));
     }
   }, [remoteStream]);
 
@@ -146,17 +145,13 @@ const CallModal = () => {
   return (
     <>
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          ALWAYS-MOUNTED MEDIA ELEMENTS
-          Hidden with CSS, never unmounted. This is what guarantees
-          ref.current is non-null when the remote stream arrives.
+          ALWAYS-MOUNTED HIDDEN AUDIO
+          Only the <audio> element needs to be always in the DOM so the
+          remote audio stream can be bound before the connected view renders.
+          Video elements use callback refs instead — no hidden duplicates.
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <div className="hidden" aria-hidden="true">
-        {/* Remote audio — the single source of truth for all call audio */}
         <audio ref={remoteAudioRef} autoPlay playsInline />
-        {/* Remote video — used in main view (video calls) */}
-        <video ref={remoteVideoRef} autoPlay playsInline />
-        {/* Local video  — self-view / PiP */}
-        <video ref={localVideoRef}  autoPlay playsInline muted />
       </div>
 
       {/* Nothing else rendered when idle */}
@@ -218,7 +213,7 @@ const CallModal = () => {
                 <div onClick={toggleMinimized}
                   className="relative h-32 w-full rounded-2xl bg-black/60 overflow-hidden cursor-pointer group flex items-center justify-center border border-white/10">
                   {callType === "video" && remoteStream ? (
-                    <video ref={miniRemoteVideoRef} autoPlay playsInline
+                    <video ref={setMiniRemoteVideoRef} autoPlay playsInline
                       className="w-full h-full object-cover" />
                   ) : (
                     <div className="flex flex-col items-center gap-2">
@@ -379,10 +374,10 @@ const CallModal = () => {
                         {/* MAIN view */}
                         <div className="absolute inset-0 flex items-center justify-center bg-slate-950">
                           {/* Remote video (default main) */}
-                          <video ref={remoteVideoRef} autoPlay playsInline
+                          <video ref={setRemoteVideoRef} autoPlay playsInline
                             className={`w-full h-full object-cover ${isSwappedVideo ? "hidden" : "block"}`} />
                           {/* Local video (main when swapped) */}
-                          <video ref={localVideoRef} autoPlay playsInline muted
+                          <video ref={setLocalVideoRef} autoPlay playsInline muted
                             className={`w-full h-full object-cover ${isSwappedVideo ? "block" : "hidden"}`} />
                           {/* Camera-off placeholder */}
                           {isVideoOff && (
@@ -398,15 +393,9 @@ const CallModal = () => {
                         <div onClick={toggleSwappedVideo}
                           className="absolute top-16 right-4 sm:top-20 sm:right-6 w-32 h-44 sm:w-48 sm:h-64 rounded-2xl overflow-hidden border-2 border-white/25 shadow-2xl bg-slate-900 z-20 cursor-pointer group hover:scale-105 transition-transform"
                           title="Tap to swap main / PiP view">
-                          {/* PiP shows LOCAL when not swapped, REMOTE when swapped */}
+                          {/* PiP: local self-view by default, remote when swapped */}
                           <video
-                            ref={(el) => {
-                              if (!el) return;
-                              const stream = isSwappedVideo ? remoteStream : localStream;
-                              if (stream && el.srcObject !== stream) {
-                                el.srcObject = stream;
-                              }
-                            }}
+                            ref={isSwappedVideo ? setRemoteVideoRef : setLocalVideoRef}
                             autoPlay playsInline muted
                             className={`w-full h-full object-cover ${isVideoOff ? "hidden" : "block"}`}
                           />

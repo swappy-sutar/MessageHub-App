@@ -30,6 +30,16 @@ class PushNotificationManager {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (this.permission !== "granted" && Notification.permission !== "granted") return;
 
+    // Helper to resolve absolute URLs for avatars so the OS notification shade can fetch them
+    const resolveAbsoluteUrl = (path) => {
+      if (!path) return window.location.origin + "/avatar.png";
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      return window.location.origin + (path.startsWith("/") ? path : "/" + path);
+    };
+
+    const absoluteIconUrl = resolveAbsoluteUrl(icon);
+    const backendUrl = import.meta.env.VITE_API_BACKEND_URL || "http://localhost:3000";
+
     try {
       // Display notification via Service Worker (compulsory for mobile, best practice for desktop PWA)
       if ("serviceWorker" in navigator) {
@@ -37,32 +47,37 @@ class PushNotificationManager {
         if (registration) {
           const options = {
             body: body || "You received a new message on MessageHub",
-            icon: icon || "/avatar.png",
-            badge: "/avatar.png",
+            icon: absoluteIconUrl,
+            badge: window.location.origin + "/favicon.ico",
             tag: tag || `msg-${Date.now()}`,
             renotify: true,
             vibrate: [200, 100, 200], // vibration feedback
             actions: [
-              { action: "reply", title: "Reply" },
-              { action: "mark_read", title: "Mark as read" },
-              { action: "mute", title: "Mute" }
+              {
+                action: "reply",
+                title: "Reply",
+                type: "text", // Native inline direct text reply!
+                placeholder: "Type a message..."
+              },
+              { action: "mark_read", title: "Mark as read" }
             ],
             data: {
               onClickUrl: window.location.origin,
+              backendUrl: backendUrl.replace(/\/$/, ""), // Strip trailing slash
               tag: tag
             }
           };
 
-          await registration.showNotification(title || "💬 New Message", options);
+          await registration.showNotification(title || "MessageHub", options);
           return;
         }
       }
 
       // Legacy fallback for window context constructor
-      const notif = new Notification(title || "💬 New Message", {
+      const notif = new Notification(title || "MessageHub", {
         body: body || "You received a new message on MessageHub",
-        icon: icon || "/avatar.png",
-        badge: "/avatar.png",
+        icon: absoluteIconUrl,
+        badge: absoluteIconUrl,
         tag: tag || `msg-${Date.now()}`,
         renotify: true,
       });

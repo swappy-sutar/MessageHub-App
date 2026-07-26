@@ -43,7 +43,9 @@ if ("serviceWorker" in navigator) {
 
   // Handle actions received from Service Worker notifications (e.g. Mark as Read)
   navigator.serviceWorker.addEventListener("message", (event) => {
-    if (event.data && event.data.type === "MARK_READ") {
+    if (!event.data) return;
+
+    if (event.data.type === "MARK_READ") {
       const contactId = event.data.tag?.replace("msg-", "");
       if (contactId) {
         Promise.all([
@@ -62,6 +64,26 @@ if ("serviceWorker" in navigator) {
           }));
         }).catch((err) => console.error("Failed to load stores for SW action:", err));
       }
+    }
+
+    if (event.data.type === "REPLY_SENT") {
+      const { receiverId, message } = event.data;
+      import("./store/useChatStore.js").then(({ useChatStore }) => {
+        const currentSelectedUser = useChatStore.getState().selectedUser;
+        if (currentSelectedUser && String(currentSelectedUser._id) === String(receiverId)) {
+          useChatStore.setState((state) => {
+            const nextById = { ...state.messagesById, [message._id]: message };
+            const nextIds = state.messageIds.includes(message._id)
+              ? state.messageIds
+              : [...state.messageIds, message._id];
+            return {
+              messagesById: nextById,
+              messageIds: nextIds,
+              messages: Object.values(nextById)
+            };
+          });
+        }
+      }).catch((err) => console.error("Failed to load store for SW REPLY_SENT:", err));
     }
   });
 }

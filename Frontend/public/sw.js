@@ -35,16 +35,61 @@ self.addEventListener("notificationclick", (e) => {
 
   // Handle WhatsApp action buttons
   if (action === "reply") {
-    e.waitUntil(
-      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-        for (const client of clients) {
-          if (client.url.startsWith(self.location.origin) && "focus" in client) {
-            return client.focus();
+    const replyText = e.reply;
+    const receiverId = notification.tag?.replace("msg-", "");
+    const backendUrl = notification.data?.backendUrl;
+
+    if (replyText && receiverId && backendUrl) {
+      e.waitUntil(
+        Promise.resolve().then(async () => {
+          let headers = { "Content-Type": "application/json" };
+          try {
+            // Retrieve token from PWA Cookie Store to authenticate background fetch
+            if (self.cookieStore) {
+              const tokenObj = await self.cookieStore.get("token");
+              if (tokenObj && tokenObj.value) {
+                headers["Authorization"] = `Bearer ${tokenObj.value}`;
+              }
+            }
+          } catch (cookieErr) {
+            console.warn("Failed to read token from SW cookieStore:", cookieErr);
           }
-        }
-        if (self.clients.openWindow) return self.clients.openWindow("/");
-      })
-    );
+
+          const res = await fetch(`${backendUrl}/api/v1/messages/send/${receiverId}`, {
+            method: "POST",
+            headers: headers,
+            body: JSON.stringify({ text: replyText }),
+          });
+
+          const resData = await res.json();
+          console.log("Direct reply sent in background:", resData);
+
+          // Tell all open client pages to append this sent message to their chat threads
+          const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+          clients.forEach((client) => {
+            client.postMessage({
+              type: "REPLY_SENT",
+              receiverId: receiverId,
+              message: resData.data || { _id: `temp-${Date.now()}`, senderId: "", receiverId, text: replyText, createdAt: new Date() }
+            });
+          });
+        }).catch((err) => {
+          console.error("Direct reply background send failed:", err);
+        })
+      );
+    } else {
+      // Fallback if no text typed (just open/focus window)
+      e.waitUntil(
+        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+          for (const client of clients) {
+            if (client.url.startsWith(self.location.origin) && "focus" in client) {
+              return client.focus();
+            }
+          }
+          if (self.clients.openWindow) return self.clients.openWindow("/");
+        })
+      );
+    }
   } else if (action === "mark_read") {
     e.waitUntil(
       self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {

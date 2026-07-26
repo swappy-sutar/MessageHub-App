@@ -480,7 +480,7 @@ export const useChatStore = create((set, get) => ({
 
       if (!isMyOwnMessage && (document.hidden || !document.hasFocus() || String(currentSelectedUser?._id) !== contactId)) {
         pushNotifications.sendDesktopNotification({
-          title: `💬 Message from ${contactName}`,
+          title: contactName,
           body: msgPreview || "Sent an attachment",
           icon: contactUser?.profilePic || "/avatar.png",
           tag: `msg-${contactId}`,

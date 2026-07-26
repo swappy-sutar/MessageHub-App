@@ -1,7 +1,9 @@
 /**
  * call.controller.js — REST API for Call History
  */
-import asyncHandler from "express-async-handler";
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
 import { getCallHistory, getMissedCallCount } from "../Services/call.service.js";
 
 /**

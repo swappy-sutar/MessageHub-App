@@ -103,3 +103,54 @@ export const searchQuerySchema = z.object({
     .max(200, "Search query too long"),
 });
 
+// Google Auth Schema
+export const googleAuthSchema = z.object({
+  googleId: z.string({ required_error: "Google ID is required" }).min(1, "Google ID cannot be empty"),
+  email: z.string({ required_error: "Email is required" }).trim().lowercase().email("Invalid email address format"),
+  firstName: z.string({ required_error: "First name is required" }).trim().min(1, "First name cannot be empty"),
+  lastName: z.string().trim().optional().nullable(),
+  profilePic: z.string().url().optional().or(z.string().length(0)).nullable(),
+});
+
+// User targetUserId parameter Schema
+export const targetUserIdParamSchema = z.object({
+  targetUserId: mongoObjectIdSchema,
+});
+
+// Group schemas
+export const createGroupSchema = z.object({
+  name: z.string({ required_error: "Group name is required" }).trim().min(1, "Group name cannot be empty").max(100, "Group name too long"),
+  members: z.array(mongoObjectIdSchema).min(1, "Group must have at least one member"),
+});
+
+export const groupIdParamSchema = z.object({
+  groupId: mongoObjectIdSchema,
+});
+
+export const removeMemberParamSchema = z.object({
+  groupId: mongoObjectIdSchema,
+  memberId: mongoObjectIdSchema,
+});
+
+// E2EE PreKey Schemas
+const preKeyObjectSchema = z.object({
+  id: z.number(),
+  key: z.string().min(1),
+});
+
+const signedPreKeyObjectSchema = z.object({
+  id: z.number(),
+  key: z.string().min(1),
+  signature: z.string().min(1),
+});
+
+export const uploadPreKeysSchema = z.object({
+  identityPublicKey: z.string({ required_error: "Identity public key is required" }).min(1),
+  signedPreKey: signedPreKeyObjectSchema,
+  oneTimePreKeys: z.array(preKeyObjectSchema).optional(),
+});
+
+export const userIdParamSchema = z.object({
+  userId: mongoObjectIdSchema,
+});
+

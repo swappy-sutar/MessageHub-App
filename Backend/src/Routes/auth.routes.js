@@ -14,13 +14,13 @@ import {
 } from "../Controllers/auth.controller.js";
 import { auth } from "../Middlewares/auth.middleware.js";
 import { validateBody } from "../Middlewares/validate.middleware.js";
-import { signupSchema, loginSchema } from "../Schemas/validation.schemas.js";
+import { signupSchema, loginSchema, googleAuthSchema } from "../Schemas/validation.schemas.js";
 
 const router = express.Router();
 
 router.post("/signup", validateBody(signupSchema), signupUser);
 router.post("/login", validateBody(loginSchema), loginUser);
-router.post("/google", googleAuth);
+router.post("/google", validateBody(googleAuthSchema), googleAuth);
 router.post("/refresh-token", refreshTokenController);
 router.put("/update-profile", auth, updateProfile);
 router.post("/logout", auth, logout);

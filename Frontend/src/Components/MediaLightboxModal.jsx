@@ -185,7 +185,7 @@ const MediaLightboxModal = ({
           <button
             type="button"
             onClick={handleZoomIn}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Zoom in (+)"
           >
             <ZoomIn className="size-4 sm:size-4.5" />
@@ -195,7 +195,7 @@ const MediaLightboxModal = ({
           <button
             type="button"
             onClick={handleZoomOut}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Zoom out (-)"
           >
             <ZoomOut className="size-4 sm:size-4.5" />
@@ -205,19 +205,19 @@ const MediaLightboxModal = ({
           <button
             type="button"
             onClick={handleRotate}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Rotate"
           >
             <RotateCw className="size-4 sm:size-4.5" />
           </button>
 
-          <div className="h-4 sm:h-5 w-[1px] bg-white/15 mx-0.5 sm:mx-1" />
+          <div className="hidden sm:block h-4 sm:h-5 w-[1px] bg-white/15 mx-0.5 sm:mx-1" />
 
           {/* Star */}
           <button
             type="button"
             onClick={() => toast("Starred media")}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Star message"
           >
             <Star className="size-4 sm:size-4.5" />
@@ -227,11 +227,13 @@ const MediaLightboxModal = ({
           <button
             type="button"
             onClick={() => pinMessage(currentMedia._id)}
-            className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
+            className="hidden sm:flex p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/70 hover:text-white transition-colors cursor-pointer"
             title="Pin message"
           >
             <Pin className="size-4 sm:size-4.5" />
           </button>
+
+          <div className="hidden sm:block h-4 sm:h-5 w-[1px] bg-white/15 mx-0.5 sm:mx-1" />
 
           {/* Emoji Reactions Toggle */}
           <button

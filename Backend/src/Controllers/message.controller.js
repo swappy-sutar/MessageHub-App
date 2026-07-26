@@ -8,7 +8,7 @@ import {
   validateDocumentFile,
   cleanupTempFile,
 } from "../Utils/fileValidation.js";
-import { getReceiverSocketID, emitToUser, io } from "../Config/socket.js";
+import { getReceiverSocketID, getReceiverSocketIDs, emitToUser, io } from "../Config/socket.js";
 import CryptoJS from "crypto-js";
 
 const LEGACY_KEYS = [
@@ -293,8 +293,8 @@ const sendMessages = async (req, res) => {
       ciphertext = secretKey ? CryptoJS.AES.encrypt(text, secretKey).toString() : text;
     }
 
-    const receiverSocketId = getReceiverSocketID(receiverId);
-    const isDelivered = !!receiverSocketId;
+    const receiverSocketIds = await getReceiverSocketIDs(receiverId);
+    const isDelivered = Boolean(receiverSocketIds && receiverSocketIds.length > 0);
     const now = new Date();
 
     const newMessage = await Message.create({

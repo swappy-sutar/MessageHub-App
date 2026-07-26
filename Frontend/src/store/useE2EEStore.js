@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { axiosInstance } from "../utils/axios";
 import Cookies from "js-cookie";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 // WebCrypto helper functions
 const arrayBufferToBase64 = (buffer) => {

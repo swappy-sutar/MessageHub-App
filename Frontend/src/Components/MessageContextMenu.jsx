@@ -10,7 +10,7 @@ import {
   Pin,
   Edit3,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 import { useChatStore } from "../store/useChatStore";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];

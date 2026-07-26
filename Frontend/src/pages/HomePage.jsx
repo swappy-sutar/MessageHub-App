@@ -9,7 +9,7 @@ import CallHistoryView from "../Components/CallHistoryView";
 import UpdatesView from "../Components/UpdatesView";
 import ContactInfoPanel from "../Components/ContactInfoPanel";
 import InChatSearchPanel from "../Components/InChatSearchPanel";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 import { WifiOff } from "lucide-react";
 
 function HomePage() {
@@ -47,7 +47,7 @@ function HomePage() {
   }, []);
 
   return (
-    <div className={`h-screen w-full bg-base-100 pt-14 ${selectedUser ? "pb-0" : "pb-16 lg:pb-0"} transition-colors duration-300 overflow-hidden flex flex-col`}>
+    <div className={`h-screen w-full bg-base-100 ${selectedUser ? "pt-0 lg:pt-14 pb-0" : "pt-14 pb-16 lg:pb-0"} transition-colors duration-300 overflow-hidden flex flex-col`}>
       {/* Offline Status Banner */}
       {isOffline && (
         <div className="bg-amber-500/90 text-amber-950 px-4 py-1.5 text-xs font-extrabold text-center flex items-center justify-center gap-2 z-40 backdrop-blur-md shadow-xs animate-fade-in flex-shrink-0">
@@ -97,17 +97,17 @@ function HomePage() {
           </>
         )}
 
-        {/* Mobile Calls Tab View */}
-        {activeTab === "calls" && (
-          <div className="w-full h-full">
-            <CallHistoryView />
-          </div>
-        )}
-
         {/* Mobile Updates Tab View */}
         {activeTab === "updates" && (
           <div className="w-full h-full">
             <UpdatesView />
+          </div>
+        )}
+
+        {/* Mobile Calls Tab View */}
+        {activeTab === "calls" && (
+          <div className="w-full h-full">
+            <CallHistoryView />
           </div>
         )}
       </div>

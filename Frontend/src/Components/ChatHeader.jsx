@@ -6,7 +6,9 @@ import { useCallStore } from "../store/useCallStore";
 import { usePresenceStore } from "../store/usePresenceStore";
 import ChatHeaderMenu from "./ChatHeaderMenu";
 import avatar from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
+
+import { axiosInstance } from "../utils/axios";
 
 const ChatHeader = () => {
   const { selectedUser, setSelectedUser, typingUsers, toggleContactInfo, toggleSearch } = useChatStore();
@@ -16,8 +18,34 @@ const ChatHeader = () => {
   const [showMenu, setShowMenu] = useState(false);
   const [showCallDropdown, setShowCallDropdown] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByMe, setIsBlockedByMe] = useState(false);
+  const [amIBlockedByTarget, setAmIBlockedByTarget] = useState(false);
 
   const callDropdownRef = useRef(null);
+
+  // Check blocked status when selectedUser changes
+  useEffect(() => {
+    if (!selectedUser?._id) {
+      setIsBlocked(false);
+      setIsBlockedByMe(false);
+      setAmIBlockedByTarget(false);
+      return;
+    }
+    const checkBlocked = async () => {
+      try {
+        const res = await axiosInstance.get(`/user/privacy-status/${selectedUser._id}`);
+        if (res.data.success) {
+          setIsBlocked(res.data.data.isBlocked);
+          setIsBlockedByMe(res.data.data.isBlockedByMe);
+          setAmIBlockedByTarget(res.data.data.amIBlockedByTarget);
+        }
+      } catch (err) {
+        setIsBlocked(false);
+      }
+    };
+    checkBlocked();
+  }, [selectedUser?._id]);
 
   // Close call dropdown when clicking outside
   useEffect(() => {
@@ -39,11 +67,12 @@ const ChatHeader = () => {
   }, [showCallDropdown]);
 
   const isOnline = Boolean(
-    selectedUser?._id &&
+    !isBlocked &&
+      selectedUser?._id &&
       (onlineUsers || []).some((id) => String(id) === String(selectedUser._id))
   );
-  const isTyping = selectedUser?._id ? typingUsers?.[selectedUser._id] : false;
-  const lastSeenDate = selectedUser?._id ? lastSeenMap?.[selectedUser._id] : null;
+  const isTyping = !isBlocked && selectedUser?._id ? typingUsers?.[selectedUser._id] : false;
+  const lastSeenDate = !isBlocked && selectedUser?._id ? lastSeenMap?.[selectedUser._id] : null;
 
   const handleToggleMute = () => {
     const nextState = !isMuted;
@@ -97,7 +126,9 @@ const ChatHeader = () => {
               {isMuted && <BellOff className="size-3 text-[#8696a0]" />}
             </div>
 
-            {isTyping ? (
+            {isBlockedByMe ? (
+              <p className="text-xs text-base-content/40 font-medium">Blocked</p>
+            ) : isTyping ? (
               <p className="text-xs font-semibold text-success animate-pulse italic">
                 typing...
               </p>

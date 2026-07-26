@@ -40,7 +40,7 @@ import {
 import { THEMES } from "../constants/index.js";
 import { WALLPAPER_COLORS } from "../store/useThemeStore.js";
 import avatarLogo from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 import { axiosInstance } from "../utils/axios.js";
 

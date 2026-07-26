@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Camera, Mail, User, Shield, Calendar, QrCode, Copy, Check, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 import avatarLogo from "../assets/avatar.png";
 
 function ProfilePage() {

@@ -20,7 +20,7 @@ import {
 import { formatMessageTime, formatMessageDate } from "../utils/formatMessageTime";
 import { useChatStore } from "../store/useChatStore";
 import avatar from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const MediaLightboxModal = ({
   message,

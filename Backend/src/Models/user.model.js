@@ -56,6 +56,29 @@ const UserSchema = new Schema(
         ref: "User",
       },
     ],
+    blockedUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    favourites: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    mutedUsers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    disappearingSettings: {
+      type: Map,
+      of: String,
+      default: {},
+    },
     sessions: [
       {
         refreshToken: { type: String, required: true },

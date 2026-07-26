@@ -3,7 +3,7 @@ import { Camera, X, Send, RotateCcw, Trash2, SwitchCamera, Sparkles } from "luci
 import { useChatStore } from "../store/useChatStore";
 import { useAuthStore } from "../store/useAuthStore";
 import avatar from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const CameraCaptureModal = ({ isOpen, onClose, onSendCapturedPhoto }) => {
   const [stream, setStream] = useState(null);

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
 import { useFriendStore } from "../store/useFriendStore";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const InviteLinkHandler = () => {
   const [searchParams, setSearchParams] = useSearchParams();

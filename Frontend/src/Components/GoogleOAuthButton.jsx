@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const GoogleOAuthButton = () => {
   const { googleLogin } = useAuthStore();

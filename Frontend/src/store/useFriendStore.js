@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 import { axiosInstance } from "../utils/axios";
 import Cookies from "js-cookie";
 import { useChatStore } from "./useChatStore";

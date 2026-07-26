@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import { X, Send, Search } from "lucide-react";
 import avatar from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const ForwardMessageModal = ({ message, onClose }) => {
   const { users, forwardMessage } = useChatStore();

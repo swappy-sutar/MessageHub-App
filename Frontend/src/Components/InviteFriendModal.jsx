@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useFriendStore } from "../store/useFriendStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { toast } from "react-hot-toast";
-import { X, Search, UserPlus, Check, Inbox, Copy, QrCode, Sparkles, Link, Share2 } from "lucide-react";
+import { useChatStore } from "../store/useChatStore";
+import { useGroupStore } from "../store/useGroupStore";
+import toast from "../utils/toast.js";
+import { X, Search, UserPlus, Check, Inbox, Copy, QrCode, Sparkles, Link, Share2, Users, Plus } from "lucide-react";
 import avatar from "../assets/avatar.png";
 
 function InviteFriendModal({ isOpen, onClose }) {
   const { authUser, checkAuth } = useAuthStore();
+  const { users } = useChatStore();
+  const { createGroup, isGroupLoading, getUserGroups } = useGroupStore();
   const {
     receivedInvites,
     sentInvites,
@@ -20,11 +24,16 @@ function InviteFriendModal({ isOpen, onClose }) {
     rejectInvite,
   } = useFriendStore();
 
-  const [activeTab, setActiveTab] = useState("search"); // 'search' | 'invites'
+  const [activeTab, setActiveTab] = useState("search"); // 'search' | 'invites' | 'createGroup'
   const [query, setQuery] = useState("");
   const [codeInputValue, setCodeInputValue] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Group creation state
+  const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [selectedMemberIds, setSelectedMemberIds] = useState([]);
 
   const currentUserObj = authUser?.data || authUser;
   const myInviteCode = currentUserObj?.inviteCode || currentUserObj?._id || "MH-USER";
@@ -41,13 +50,6 @@ function InviteFriendModal({ isOpen, onClose }) {
     const value = e.target.value;
     setQuery(value);
     searchUsers(value);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(myInviteCode);
-    setCopiedCode(true);
-    toast.success("Invite code copied to clipboard!");
-    setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const handleCopyLink = () => {
@@ -80,6 +82,36 @@ function InviteFriendModal({ isOpen, onClose }) {
     setCodeInputValue("");
   };
 
+  const toggleMemberSelection = (userId) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const handleCreateGroupSubmit = async (e) => {
+    e.preventDefault();
+    if (!groupName.trim()) {
+      toast.error("Please enter a group name.");
+      return;
+    }
+
+    try {
+      await createGroup({
+        name: groupName.trim(),
+        description: groupDescription.trim(),
+        memberIds: selectedMemberIds,
+      });
+      toast.success(`Group "${groupName.trim()}" created successfully! 🎉`);
+      setGroupName("");
+      setGroupDescription("");
+      setSelectedMemberIds([]);
+      getUserGroups();
+      onClose();
+    } catch (err) {
+      toast.error("Failed to create group. Please try again.");
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -95,9 +127,15 @@ function InviteFriendModal({ isOpen, onClose }) {
         <div className="p-4 border-b border-base-300 flex items-center justify-between bg-base-200/50">
           <div className="flex items-center gap-2">
             <div className="size-8 rounded-xl bg-primary/10 flex items-center justify-center">
-              <UserPlus className="size-4 text-primary" />
+              {activeTab === "createGroup" ? (
+                <Users className="size-4 text-primary" />
+              ) : (
+                <UserPlus className="size-4 text-primary" />
+              )}
             </div>
-            <h3 className="font-bold text-base text-base-content">Invite Friends</h3>
+            <h3 className="font-bold text-base text-base-content">
+              {activeTab === "createGroup" ? "Create New Group" : "Invite & Connect"}
+            </h3>
           </div>
 
           <button
@@ -108,8 +146,8 @@ function InviteFriendModal({ isOpen, onClose }) {
           </button>
         </div>
 
-        {/* Shareable Invite Link Card */}
-        <div className="p-4 bg-gradient-to-r from-primary/15 via-purple-500/10 to-primary/5 border-b border-base-300 space-y-2.5">
+        {/* Shareable Invite Link Banner */}
+        <div className="p-3.5 bg-gradient-to-r from-primary/15 via-purple-500/10 to-primary/5 border-b border-base-300 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider font-bold text-primary flex items-center gap-1">
               <Link className="size-3.5" /> Shareable Invite Link
@@ -144,40 +182,53 @@ function InviteFriendModal({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Tab switcher */}
+        {/* 3 Tab Switcher: Search | Pending Invites | Create Group */}
         <div className="flex border-b border-base-300 bg-base-100">
           <button
             onClick={() => setActiveTab("search")}
-            className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors ${
+            className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
               activeTab === "search"
                 ? "border-primary text-primary bg-primary/5"
                 : "border-transparent text-base-content/60 hover:text-base-content"
             }`}
           >
             <Search className="size-3.5" />
-            Enter Code / Search
+            Search / Code
           </button>
 
           <button
             onClick={() => setActiveTab("invites")}
-            className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-2 border-b-2 transition-colors relative ${
+            className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors relative ${
               activeTab === "invites"
                 ? "border-primary text-primary bg-primary/5"
                 : "border-transparent text-base-content/60 hover:text-base-content"
             }`}
           >
             <Inbox className="size-3.5" />
-            Pending Invites
+            Invites
             {receivedInvites.length > 0 && (
               <span className="badge badge-primary badge-xs font-mono">
                 {receivedInvites.length}
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setActiveTab("createGroup")}
+            className={`flex-1 py-3 text-xs font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+              activeTab === "createGroup"
+                ? "border-primary text-primary bg-primary/5"
+                : "border-transparent text-base-content/60 hover:text-base-content"
+            }`}
+          >
+            <Users className="size-3.5" />
+            Create Group
+          </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Body Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Tab 1: Enter Code / Search Users */}
           {activeTab === "search" && (
             <div className="space-y-4">
               {/* Direct Code Input Form */}
@@ -261,6 +312,7 @@ function InviteFriendModal({ isOpen, onClose }) {
             </div>
           )}
 
+          {/* Tab 2: Pending Invites */}
           {activeTab === "invites" && (
             <div className="space-y-4">
               {/* Incoming Received Invites */}
@@ -351,6 +403,118 @@ function InviteFriendModal({ isOpen, onClose }) {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Tab 3: Create New Group */}
+          {activeTab === "createGroup" && (
+            <form onSubmit={handleCreateGroupSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-base-content/70 uppercase tracking-wider block mb-1.5">
+                  Group Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Project Team 🚀"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  required
+                  className="input input-bordered w-full rounded-2xl text-xs focus:input-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-base-content/70 uppercase tracking-wider block mb-1.5">
+                  Description (Optional)
+                </label>
+                <textarea
+                  placeholder="What is this group about?"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  rows={2}
+                  className="textarea textarea-bordered w-full rounded-2xl text-xs focus:textarea-primary resize-none"
+                />
+              </div>
+
+              {/* Member Selection List */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-base-content/70 uppercase tracking-wider">
+                    Select Members ({selectedMemberIds.length})
+                  </label>
+                  {selectedMemberIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMemberIds([])}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 border border-base-300 rounded-2xl p-2 bg-base-200/30">
+                  {(users || []).length === 0 ? (
+                    <p className="text-xs text-base-content/50 text-center py-4">No contacts found</p>
+                  ) : (
+                    (users || []).map((u) => {
+                      const isSelected = selectedMemberIds.includes(u._id);
+                      return (
+                        <div
+                          key={u._id}
+                          onClick={() => toggleMemberSelection(u._id)}
+                          className={`p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected ? "bg-primary/10 border border-primary/30" : "hover:bg-base-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={u.profilePic || avatar}
+                              alt={u.firstName}
+                              className="size-8 rounded-full object-cover border border-base-300"
+                            />
+                            <div>
+                              <p className="text-xs font-bold text-base-content">
+                                {u.firstName} {u.lastName}
+                              </p>
+                              <p className="text-[10px] text-base-content/50 truncate max-w-[180px]">
+                                {u.email}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`size-5 rounded-lg flex items-center justify-center border transition-all ${
+                              isSelected
+                                ? "bg-primary border-primary text-white"
+                                : "border-base-300"
+                            }`}
+                          >
+                            {isSelected && <Check className="size-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isGroupLoading || !groupName.trim()}
+                  className="btn btn-primary w-full gap-2 rounded-2xl text-xs font-bold shadow-md hover:shadow-lg"
+                >
+                  {isGroupLoading ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    <>
+                      <Plus className="size-4" /> Create Group
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useChatStore } from "../store/useChatStore";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const DeleteMessageModal = ({ message, isMine, onClose }) => {
   const { deleteMessage } = useChatStore();

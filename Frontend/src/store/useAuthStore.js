@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { axiosInstance } from "../utils/axios.js";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 import Cookies from "js-cookie";
 import { io } from "socket.io-client";
 import { useCallStore } from "./useCallStore.js";

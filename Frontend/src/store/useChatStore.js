@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 import { axiosInstance } from "../utils/axios";
 import Cookies from "js-cookie";
 import { useAuthStore } from "./useAuthStore";
@@ -58,9 +58,11 @@ export const useChatStore = create((set, get) => ({
 
   // Mobile Back Navigation & Tab State
   isExitModalOpen: false,
+  isExiting: false,
   activeTab: "chats", // 'chats' | 'calls' | 'updates'
 
   setExitModalOpen: (isOpen) => set({ isExitModalOpen: isOpen }),
+  setExiting: (isExiting) => set({ isExiting }),
   setActiveTab: (tab) => set({ activeTab: tab }),
 
   // Setters & UI drawer toggles

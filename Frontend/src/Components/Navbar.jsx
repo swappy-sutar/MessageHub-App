@@ -21,11 +21,11 @@ import InviteFriendModal from "./InviteFriendModal";
 import CameraCaptureModal from "./CameraCaptureModal";
 import MessageHubLogo from "./MessageHubLogo";
 import avatarLogo from "../assets/avatar.png";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const Navbar = () => {
   const { logout, authUser } = useAuthStore();
-  const { unreadCounts, setSelectedUser, users, toggleSettings } = useChatStore();
+  const { unreadCounts, setSelectedUser, users, toggleSettings, selectedUser } = useChatStore();
   const { receivedInvites, acceptInvite, rejectInvite } = useFriendStore();
   const navigate = useNavigate();
 
@@ -68,7 +68,7 @@ const Navbar = () => {
 
   return (
     <>
-      <header className="bg-base-100/90 border-b border-base-300 fixed w-full top-0 z-40 backdrop-blur-md transition-colors duration-300">
+      <header className={`bg-base-100/90 border-b border-base-300 fixed w-full top-0 z-40 backdrop-blur-md transition-colors duration-300 ${selectedUser ? "hidden lg:block" : "block"}`}>
         <div className="container mx-auto px-4 h-14">
           <div className="flex items-center justify-between h-full">
             {/* Left: Brand Logo & Title */}

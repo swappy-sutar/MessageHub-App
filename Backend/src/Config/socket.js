@@ -154,15 +154,31 @@ io.on("connection", async (socket) => {
 
   // --- WebRTC Signaling Handlers ---
   socket.on(SOCKET_EVENTS.CALL_USER, async ({ to, offer, callType, callerInfo }) => {
-    const receiverSocketIds = await getReceiverSocketIDs(to);
-    if (receiverSocketIds.length > 0) {
-      emitToUser(to, SOCKET_EVENTS.INCOMING_CALL, {
-        from: userId,
-        offer,
-        callType,
-        callerInfo,
-      });
-    } else {
+    try {
+      const receiverUser = await User.findById(to);
+      const senderUser = await User.findById(userId);
+
+      const isBlocked =
+        receiverUser?.blockedUsers?.some((id) => String(id) === String(userId)) ||
+        senderUser?.blockedUsers?.some((id) => String(id) === String(to));
+
+      if (isBlocked) {
+        socket.emit(SOCKET_EVENTS.CALL_REJECTED);
+        return;
+      }
+
+      const receiverSocketIds = await getReceiverSocketIDs(to);
+      if (receiverSocketIds.length > 0) {
+        emitToUser(to, SOCKET_EVENTS.INCOMING_CALL, {
+          from: userId,
+          offer,
+          callType,
+          callerInfo,
+        });
+      } else {
+        socket.emit(SOCKET_EVENTS.CALL_REJECTED);
+      }
+    } catch (err) {
       socket.emit(SOCKET_EVENTS.CALL_REJECTED);
     }
   });

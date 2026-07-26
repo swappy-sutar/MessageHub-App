@@ -8,27 +8,30 @@ const ExitAppModal = () => {
   if (!isExitModalOpen) return null;
 
   const handleConfirmExit = () => {
+    // 1. Mark app state as exiting so useMobileBackHandler allows back navigation
+    useChatStore.getState().setExiting(true);
     setExitModalOpen(false);
     
-    // Attempt multiple exit strategies for PWA / Mobile Webview / Browser
+    // 2. Native Cordova / Capacitor Mobile App exit
     try {
-      if (window.navigator && window.navigator.app && window.navigator.app.exitApp) {
-        // Cordova / Capacitor mobile app exit
+      if (window.navigator?.app?.exitApp) {
         window.navigator.app.exitApp();
-      } else {
-        // Standard window close or history back exit
-        window.close();
-        
-        // Fallback for desktop/mobile browsers where window.close is restricted
-        setTimeout(() => {
-          if (!window.closed) {
-            window.history.go(-2);
-          }
-        }, 100);
+        return;
       }
+    } catch (err) {}
+
+    // 3. Standard Window Close (for PWAs, WebViews, popups, standalone tabs)
+    try {
+      window.close();
+    } catch (err) {}
+
+    // 4. Browser History Exit: Step out of the app's history stack to return to home/blank
+    try {
+      window.history.go(-10);
     } catch (err) {
-      console.warn("Could not exit app window programmatically:", err);
-      window.history.back();
+      try {
+        window.history.back();
+      } catch (e) {}
     }
   };
 

@@ -36,8 +36,13 @@ function Sidebar() {
     }
   }, [socket, initInviteListeners]);
 
+  const authUser = useAuthStore((state) => state.authUser);
+  const myBlockedList = authUser?.data?.blockedUsers || authUser?.blockedUsers || [];
+
   const isUserOnline = (userId) => {
     if (!userId || !onlineUsers) return false;
+    const isBlocked = (myBlockedList || []).some((id) => String(id) === String(userId));
+    if (isBlocked) return false;
     return onlineUsers.some((id) => String(id) === String(userId));
   };
 

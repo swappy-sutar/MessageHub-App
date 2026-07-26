@@ -8,8 +8,8 @@ function BottomNav({ activeTab, setActiveTab }) {
 
   const TABS = [
     { id: "chats", label: "Chats", icon: MessageSquare },
-    { id: "calls", label: "Calls", icon: Phone },
     { id: "updates", label: "Updates", icon: Sparkles },
+    { id: "calls", label: "Calls", icon: Phone },
   ];
 
   return (

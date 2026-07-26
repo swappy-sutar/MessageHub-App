@@ -204,6 +204,45 @@ const sendMessages = async (req, res) => {
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
+    // Check if either user has blocked the other
+    const receiverUser = await User.findById(receiverId);
+    if (!receiverUser) {
+      if (image) await cleanupTempFile(image);
+      if (video) await cleanupTempFile(video);
+      if (document) await cleanupTempFile(document);
+      return res.status(404).json({ success: false, message: "Recipient user not found" });
+    }
+
+    const senderUser = await User.findById(senderId);
+
+    // 1. If recipient has blocked the sender
+    const isSenderBlockedByReceiver = receiverUser.blockedUsers?.some(
+      (id) => String(id) === String(senderId)
+    );
+    if (isSenderBlockedByReceiver) {
+      if (image) await cleanupTempFile(image);
+      if (video) await cleanupTempFile(video);
+      if (document) await cleanupTempFile(document);
+      return res.status(403).json({
+        success: false,
+        message: "You cannot send messages to this contact.",
+      });
+    }
+
+    // 2. If sender has blocked the recipient
+    const isReceiverBlockedBySender = senderUser.blockedUsers?.some(
+      (id) => String(id) === String(receiverId)
+    );
+    if (isReceiverBlockedBySender) {
+      if (image) await cleanupTempFile(image);
+      if (video) await cleanupTempFile(video);
+      if (document) await cleanupTempFile(document);
+      return res.status(403).json({
+        success: false,
+        message: "You have blocked this contact. Unblock them to send messages.",
+      });
+    }
+
     let imageUrl = null;
     let videoUrl = null;
     let documentObj = null;
@@ -631,6 +670,62 @@ const syncMessages = async (req, res) => {
   }
 };
 
+// Clear Chat (Hides all messages for current user)
+const clearChat = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    await Message.updateMany(
+      {
+        $or: [
+          { senderId: currentUserId, receiverId: targetUserId },
+          { senderId: targetUserId, receiverId: currentUserId },
+        ],
+      },
+      {
+        $addToSet: { deletedFor: currentUserId },
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Chat history cleared successfully.",
+    });
+  } catch (error) {
+    console.error("Error in clearChat:", error.stack || error);
+    return res.status(500).json({ success: false, message: "Failed to clear chat history." });
+  }
+};
+
+// Delete Chat (Clears messages for current user)
+const deleteEntireChat = async (req, res) => {
+  try {
+    const { id: targetUserId } = req.params;
+    const currentUserId = req.user._id;
+
+    await Message.updateMany(
+      {
+        $or: [
+          { senderId: currentUserId, receiverId: targetUserId },
+          { senderId: targetUserId, receiverId: currentUserId },
+        ],
+      },
+      {
+        $addToSet: { deletedFor: currentUserId },
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Chat deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error in deleteEntireChat:", error.stack || error);
+    return res.status(500).json({ success: false, message: "Failed to delete chat." });
+  }
+};
+
 export {
   getUsersForSidebar,
   getMessages,
@@ -643,4 +738,6 @@ export {
   getPinnedMessages,
   searchMessages,
   syncMessages,
+  clearChat,
+  deleteEntireChat,
 };

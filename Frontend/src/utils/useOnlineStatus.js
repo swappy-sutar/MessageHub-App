@@ -1,6 +1,6 @@
 // src/hooks/useOnlineStatus.js
 import { useState, useEffect } from "react";
-import { toast } from "react-hot-toast";
+import toast from "./toast.js";
 
 export default function useOnlineStatus() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);

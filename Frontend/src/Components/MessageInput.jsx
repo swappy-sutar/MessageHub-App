@@ -16,8 +16,10 @@ import {
   FileText,
   Edit3,
   Check,
+  Ban,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import { axiosInstance } from "../utils/axios.js";
+import toast from "../utils/toast.js";
 import EmojiPickerSheet from "./EmojiPickerSheet";
 import CameraCaptureModal from "./CameraCaptureModal";
 import { extractFirstUrl, getLinkPreviewData } from "../utils/linkPreview.js";
@@ -55,6 +57,45 @@ const MessageInput = () => {
     selectedUser,
   } = useChatStore();
   const socket = useAuthStore((state) => state.socket);
+
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByMe, setIsBlockedByMe] = useState(false);
+  const [amIBlockedByTarget, setAmIBlockedByTarget] = useState(false);
+
+  // Check blocked status when selectedUser changes
+  useEffect(() => {
+    if (!selectedUser?._id) {
+      setIsBlocked(false);
+      setIsBlockedByMe(false);
+      setAmIBlockedByTarget(false);
+      return;
+    }
+    const checkBlockedStatus = async () => {
+      try {
+        const res = await axiosInstance.get(`/user/privacy-status/${selectedUser._id}`);
+        if (res.data.success) {
+          setIsBlocked(res.data.data.isBlocked);
+          setIsBlockedByMe(res.data.data.isBlockedByMe);
+          setAmIBlockedByTarget(res.data.data.amIBlockedByTarget);
+        }
+      } catch (err) {
+        setIsBlocked(false);
+      }
+    };
+    checkBlockedStatus();
+  }, [selectedUser?._id]);
+
+  const handleUnblock = async () => {
+    try {
+      const res = await axiosInstance.post(`/user/block/${selectedUser._id}`);
+      if (res.data.success) {
+        setIsBlocked(res.data.isBlocked);
+        toast.success(res.data.message);
+      }
+    } catch (err) {
+      toast.error("Failed to unblock user.");
+    }
+  };
 
   // When editingMessage changes, populate input text
   useEffect(() => {
@@ -219,6 +260,27 @@ const MessageInput = () => {
   };
 
   const canSend = text.trim() || imageFile || videoFile || docFile;
+
+  if (isBlocked) {
+    return (
+      <div className="p-4 border-t border-base-300 bg-base-200/80 text-center space-y-2 animate-fade-in">
+        <p className="text-xs text-base-content/80 font-semibold flex items-center justify-center gap-1.5">
+          <Ban className="size-4 text-error" />{" "}
+          {isBlockedByMe
+            ? "You blocked this contact. Unblock them to send a message."
+            : "You cannot send messages to this contact."}
+        </p>
+        {isBlockedByMe && (
+          <button
+            onClick={handleUnblock}
+            className="btn btn-xs btn-primary font-bold rounded-xl px-4 shadow-xs hover:scale-105 transition-transform"
+          >
+            Unblock {selectedUser?.firstName || "Contact"}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative p-2.5 sm:p-3 w-full border-t border-base-300 bg-base-100 transition-colors duration-300">

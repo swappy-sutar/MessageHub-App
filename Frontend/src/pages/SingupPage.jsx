@@ -6,7 +6,7 @@ import AuthImagePattern from "../Components/AuthImagePattern";
 import ThemeSwitcher from "../Components/ThemeSwitcher";
 import GoogleOAuthButton from "../Components/GoogleOAuthButton";
 import MessageHubLogo from "../Components/MessageHubLogo";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);

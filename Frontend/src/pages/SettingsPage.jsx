@@ -20,7 +20,7 @@ import {
 import { THEMES } from "../constants/index.js";
 import { Link, useNavigate } from "react-router-dom";
 import avatarLogo from "../assets/avatar.png";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.js";
 
 const PREVIEW_MESSAGES = [
   { id: 1, content: "Hey! Good Morning 😊", isSent: true },

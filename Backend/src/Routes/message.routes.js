@@ -11,6 +11,8 @@ import {
   getPinnedMessages,
   searchMessages,
   syncMessages,
+  clearChat,
+  deleteEntireChat,
 } from "../Controllers/message.controller.js";
 import { auth } from "../Middlewares/auth.middleware.js";
 import { validateParams, validateBody } from "../Middlewares/validate.middleware.js";
@@ -33,5 +35,7 @@ router.post("/reaction/:id", auth, validateParams(idParamSchema), validateBody(r
 router.delete("/reaction/:id", auth, validateParams(idParamSchema), removeReaction);
 router.post("/pin/:id", auth, validateParams(idParamSchema), pinMessage);
 router.delete("/delete/:id", auth, validateParams(idParamSchema), deleteMessage);
+router.delete("/clear-chat/:id", auth, validateParams(idParamSchema), clearChat);
+router.delete("/delete-chat/:id", auth, validateParams(idParamSchema), deleteEntireChat);
 
 export default router;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { toast } from "react-hot-toast";
+import toast from "../utils/toast.js";
 import { useAuthStore } from "./useAuthStore";
 import { useChatStore } from "./useChatStore";
 import { ringtone } from "../utils/ringtone";

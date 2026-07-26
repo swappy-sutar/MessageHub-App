@@ -76,6 +76,11 @@ export function useMobileBackHandler() {
     const handlePopState = (event) => {
       const state = useChatStore.getState();
 
+      // 0. If user explicitly clicked "Yes (Exit)", allow history back navigation to exit cleanly!
+      if (state.isExiting) {
+        return;
+      }
+
       // 1. If Exit Modal is currently open, pressing Back closes the Exit Modal
       if (state.isExitModalOpen) {
         state.setExitModalOpen(false);

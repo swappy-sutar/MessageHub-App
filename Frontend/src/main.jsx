@@ -9,7 +9,25 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <App />
-      <Toaster /> 
+      <Toaster
+        position="top-center"
+        reverseOrder={false}
+        gutter={8}
+        containerStyle={{ top: 24 }}
+        toastOptions={{
+          duration: 3500,
+          style: {
+            borderRadius: "16px",
+            background: "var(--fallback-b1,oklch(var(--b1)/1))",
+            color: "var(--fallback-bc,oklch(var(--bc)/1))",
+            border: "1px solid rgba(128, 128, 128, 0.2)",
+            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+            fontSize: "13px",
+            fontWeight: "600",
+            padding: "10px 16px",
+          },
+        }}
+      />
     </BrowserRouter>
   </StrictMode>
 );
